@@ -1,0 +1,3 @@
+name: ws-ecr-stack
+runtime: go
+description: WebSocket Latency Testing ECR Repository Stack

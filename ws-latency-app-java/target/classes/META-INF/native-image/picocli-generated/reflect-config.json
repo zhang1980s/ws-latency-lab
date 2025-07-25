@@ -1,0 +1,81 @@
+[
+  {
+    "name" : "java.lang.Boolean",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true
+  },
+  {
+    "name" : "java.lang.Integer",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true
+  },
+  {
+    "name" : "picocli.CommandLine$AutoHelpMixin",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true,
+    "fields" : [
+      { "name" : "helpRequested" },
+      { "name" : "versionRequested" }
+    ]
+  },
+  {
+    "name" : "xyz.zzhe.wslatency.WebSocketApp",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true,
+    "fields" : [
+      { "name" : "appType" },
+      { "name" : "continuous" },
+      { "name" : "insecureSkipVerify" },
+      { "name" : "mode" },
+      { "name" : "payloadSize" },
+      { "name" : "port" },
+      { "name" : "prewarmCount" },
+      { "name" : "rate" },
+      { "name" : "serverUrl" },
+      { "name" : "testDuration" }
+    ]
+  },
+  {
+    "name" : "xyz.zzhe.wslatency.WebSocketLatencyApp",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true,
+    "fields" : [
+      { "name" : "continuous" },
+      { "name" : "eventsPerSecond" },
+      { "name" : "insecureSkipVerify" },
+      { "name" : "mode" },
+      { "name" : "port" },
+      { "name" : "prewarmCount" },
+      { "name" : "serverUrl" },
+      { "name" : "testDuration" }
+    ]
+  },
+  {
+    "name" : "xyz.zzhe.wslatency.rtt.WebSocketRttApp",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true,
+    "fields" : [
+      { "name" : "continuous" },
+      { "name" : "insecureSkipVerify" },
+      { "name" : "mode" },
+      { "name" : "payloadSize" },
+      { "name" : "port" },
+      { "name" : "prewarmCount" },
+      { "name" : "requestsPerSecond" },
+      { "name" : "serverUrl" },
+      { "name" : "testDuration" }
+    ]
+  }
+]

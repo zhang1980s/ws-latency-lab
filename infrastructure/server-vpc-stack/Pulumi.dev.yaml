@@ -1,0 +1,11 @@
+config:
+  aws:region: ap-east-1
+  ws-server-vpc-stack:environment: dev
+  ws-server-vpc-stack:project: ws-latency
+  ws-server-vpc-stack:owner: zhang1980s
+  ws-server-vpc-stack:keyPairName: keypair-sandbox0-hkg
+  ws-server-vpc-stack:customTags:
+    Environment: dev
+    Project: ws-latency
+    Owner: zhang1980s
+    ManagedBy: pulumi

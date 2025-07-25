@@ -1,0 +1,13 @@
+{
+    "go.gopath": "/home/ec2-user/go",
+    "go.goroot": "/usr/lib/golang",
+    "go.toolsManagement.autoUpdate": true,
+    "go.useLanguageServer": true,
+    "go.toolsEnvVars": {
+        "GOPATH": "/home/ec2-user/go",
+        "GOMODCACHE": "/home/ec2-user/go/pkg/mod"
+    },
+    "go.alternateTools": {
+        "gopls": "/home/ec2-user/go/bin/gopls"
+    }
+}

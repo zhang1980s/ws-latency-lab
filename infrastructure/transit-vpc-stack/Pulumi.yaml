@@ -1,0 +1,3 @@
+name: ws-latency-transit-vpc
+runtime: go
+description: WebSocket Latency Testing Transit VPC Stack
