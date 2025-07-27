@@ -18,6 +18,12 @@ type Config struct {
 	CertificateArn string
 	KeyPairName    string
 
+	// Server VPC configuration
+	InstanceType string
+
+	// Transit VPC configuration
+	TransitInstanceType string
+
 	// Custom tags
 	CustomTags map[string]string
 }
@@ -40,6 +46,18 @@ func LoadConfig(ctx *pulumi.Context) (*Config, error) {
 		keyPairName = KeyPairName // Use default from constants.go if not specified
 	}
 
+	// Load server VPC configuration
+	instanceType := conf.Get("instanceType")
+	if instanceType == "" {
+		instanceType = ServerInstanceType // Use default from constants.go if not specified
+	}
+
+	// Load transit VPC configuration
+	transitInstanceType := conf.Get("instanceType")
+	if transitInstanceType == "" {
+		transitInstanceType = ClientInstanceType // Use default from constants.go if not specified
+	}
+
 	// Load custom tags
 	customTags := make(map[string]string)
 	var tagsObj interface{}
@@ -59,13 +77,15 @@ func LoadConfig(ctx *pulumi.Context) (*Config, error) {
 	}
 
 	return &Config{
-		Environment:    environment,
-		Project:        project,
-		Owner:          owner,
-		Region:         region,
-		CertificateArn: certificateArn,
-		KeyPairName:    keyPairName,
-		CustomTags:     customTags,
+		Environment:         environment,
+		Project:             project,
+		Owner:               owner,
+		Region:              region,
+		CertificateArn:      certificateArn,
+		KeyPairName:         keyPairName,
+		InstanceType:        instanceType,
+		TransitInstanceType: transitInstanceType,
+		CustomTags:          customTags,
 	}, nil
 }
 

@@ -3,9 +3,9 @@ config:
   ws-latency-transit-vpc:environment: dev
   ws-latency-transit-vpc:project: ws-latency
   ws-latency-transit-vpc:owner: zhang1980s
-  ws-latency-transit-vpc:certificateArn: arn:aws:acm:ap-east-1:509399613275:certificate/f21c5d7c-b3b6-4640-9949-2c5715f8e4b5
+  ws-latency-transit-vpc:certificateArn: arn:aws:acm:ap-east-1:894855526703:certificate/1e80c588-68ff-42a2-b8a4-952c804e8af3
+  ws-latency-transit-vpc:keyPairName: keypair-root-hkg
+  ws-latency-transit-vpc:instanceType: "m7i.8xlarge"
   ws-latency-transit-vpc:customTags:
-    Environment: dev
-    Project: ws-latency
-    Owner: zhang1980s
+    auto-delete: no
     ManagedBy: pulumi

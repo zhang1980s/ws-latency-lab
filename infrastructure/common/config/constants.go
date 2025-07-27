@@ -8,14 +8,14 @@ const (
 	ServerVpcCidr  = "10.3.0.0/16"
 
 	// Subnet CIDR blocks
-	ClientSubnetCidr   = "10.1.1.0/24"
+	ClientSubnetCidr   = "10.1.2.0/24"
 	TransitSubnetCidr  = "10.2.1.0/24"
 	TransitSubnetCidr2 = "10.2.2.0/24"
-	ServerSubnetCidr   = "10.3.1.0/24"
+	ServerSubnetCidr   = "10.3.2.0/24"
 
 	// Availability zones
-	AvailabilityZone  = "ap-east-1b"
-	AvailabilityZone2 = "ap-east-1c"
+	AvailabilityZone  = "ap-east-1a"
+	AvailabilityZone2 = "ap-east-1b"
 
 	// Port configurations
 	WebSocketPort   = 10443

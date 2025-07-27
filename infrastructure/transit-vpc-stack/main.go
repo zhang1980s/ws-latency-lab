@@ -50,6 +50,12 @@ func main() {
 			return err
 		}
 
+		// Create transit client EC2 instance
+		transitClientInstance, err := resources.CreateTransitEc2Instance(ctx, cfg, vpc, subnets, sg)
+		if err != nil {
+			return err
+		}
+
 		// Create VPC endpoint service
 		endpointService, err := resources.CreateVpcEndpointService(ctx, cfg, nlb)
 		if err != nil {
@@ -70,6 +76,8 @@ func main() {
 		ctx.Export("nlbDnsName", nlb.DnsName)
 		ctx.Export("vpcPeeringId", peering.ID())
 		ctx.Export("endpointServiceName", endpointService.ServiceName)
+		ctx.Export("transitClientInstanceId", transitClientInstance.ID())
+		ctx.Export("transitClientInstancePublicIp", transitClientInstance.PublicIp)
 
 		return nil
 	})

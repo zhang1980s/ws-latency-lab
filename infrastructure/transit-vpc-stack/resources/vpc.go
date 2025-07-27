@@ -13,7 +13,7 @@ import (
 // CreateVpc creates a VPC with subnets for the transit VPC (load balancers)
 func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOutput, *ec2.RouteTable, error) {
 	// Get VPC configuration
-	vpcConfig := config.GetTransitVpcConfig()
+	vpcConfig := config.GetTransitVpcConfig(cfg)
 
 	// Create VPC
 	vpc, err := ec2.NewVpc(ctx, vpcConfig.Name, &ec2.VpcArgs{
@@ -93,8 +93,8 @@ func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOu
 // CreateVpcPeering creates a VPC peering connection between the transit VPC and server VPC
 func CreateVpcPeering(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, transitRouteTable *ec2.RouteTable, serverVpcId pulumi.Output, serverRouteTableId pulumi.Output) (*ec2.VpcPeeringConnection, error) {
 	// Get VPC configurations
-	transitVpcConfig := config.GetTransitVpcConfig()
-	serverVpcConfig := config.GetServerVpcConfig()
+	transitVpcConfig := config.GetTransitVpcConfig(cfg)
+	serverVpcConfig := config.GetServerVpcConfig(cfg)
 
 	// Create VPC peering connection
 	peeringName := config.GetVpcPeeringName(transitVpcConfig.Name, serverVpcConfig.Name)
@@ -117,9 +117,9 @@ func CreateVpcPeering(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, tra
 	// Create route from transit VPC to server VPC in the main route table
 	_, err = ec2.NewRoute(ctx, config.FormatResourceName(transitVpcConfig.Name, "route", "to-server", "main"), &ec2.RouteArgs{
 		RouteTableId:           vpc.MainRouteTableId,
-		DestinationCidrBlock:   pulumi.String(serverVpcConfig.CidrBlock),
+		DestinationCidrBlock:   pulumi.String(config.ServerVpcCidr),
 		VpcPeeringConnectionId: peering.ID(),
-	})
+	}, pulumi.DependsOn([]pulumi.Resource{peering}))
 	if err != nil {
 		return nil, err
 	}
@@ -127,9 +127,9 @@ func CreateVpcPeering(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, tra
 	// Create route from transit VPC to server VPC in the transit route table
 	_, err = ec2.NewRoute(ctx, config.FormatResourceName(transitVpcConfig.Name, "route", "to-server", "transit"), &ec2.RouteArgs{
 		RouteTableId:           transitRouteTable.ID(),
-		DestinationCidrBlock:   pulumi.String(serverVpcConfig.CidrBlock),
+		DestinationCidrBlock:   pulumi.String(config.ServerVpcCidr),
 		VpcPeeringConnectionId: peering.ID(),
-	})
+	}, pulumi.DependsOn([]pulumi.Resource{peering}))
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +162,9 @@ func CreateVpcPeering(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, tra
 
 		_, err := ec2.NewRoute(ctx, config.FormatResourceName(serverVpcConfig.Name, "route", "to-transit"), &ec2.RouteArgs{
 			RouteTableId:           pulumi.String(rtId),
-			DestinationCidrBlock:   pulumi.String(transitVpcConfig.CidrBlock),
+			DestinationCidrBlock:   pulumi.String(config.TransitVpcCidr),
 			VpcPeeringConnectionId: peering.ID(),
-		})
+		}, pulumi.DependsOn([]pulumi.Resource{peering}))
 		if err != nil {
 			return err
 		}

@@ -11,7 +11,7 @@ import (
 // CreateVpc creates a VPC with a single subnet in ap-east-1b for the server
 func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOutput, *ec2.RouteTable, error) {
 	// Get VPC configuration
-	vpcConfig := config.GetServerVpcConfig()
+	vpcConfig := config.GetServerVpcConfig(cfg)
 
 	// Create VPC
 	vpc, err := ec2.NewVpc(ctx, vpcConfig.Name, &ec2.VpcArgs{
@@ -40,7 +40,7 @@ func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOu
 	subnet, err := ec2.NewSubnet(ctx, subnetName, &ec2.SubnetArgs{
 		VpcId:            vpc.ID(),
 		CidrBlock:        pulumi.String(config.ServerSubnetCidr),
-		AvailabilityZone: pulumi.String(config.AvailabilityZone), // ap-east-1b
+		AvailabilityZone: pulumi.String(config.AvailabilityZone2), // ap-east-1b
 		Tags:             utils.ApplyTags(ctx, subnetName, utils.GetNamedTags(subnetName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
 	})
 	if err != nil {
@@ -83,8 +83,8 @@ func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOu
 // AddRouteToTransitVpc adds a route from the server VPC to the transit VPC via the VPC peering connection
 func AddRouteToTransitVpc(ctx *pulumi.Context, cfg *config.Config, routeTable *ec2.RouteTable, vpcPeeringId pulumi.StringInput) error {
 	// Get VPC configurations
-	serverVpcConfig := config.GetServerVpcConfig()
-	transitVpcConfig := config.GetTransitVpcConfig()
+	serverVpcConfig := config.GetServerVpcConfig(cfg)
+	transitVpcConfig := config.GetTransitVpcConfig(cfg)
 
 	// Create route from server VPC to transit VPC
 	_, err := ec2.NewRoute(ctx, config.FormatResourceName(serverVpcConfig.Name, "route", "to-transit"), &ec2.RouteArgs{

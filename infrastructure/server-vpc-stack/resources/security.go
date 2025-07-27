@@ -13,7 +13,7 @@ import (
 // CreateSecurityGroups creates security groups for the server VPC
 func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc) (*ec2.SecurityGroup, error) {
 	// Get VPC configuration
-	vpcConfig := config.GetServerVpcConfig()
+	vpcConfig := config.GetServerVpcConfig(cfg)
 
 	// Create security group for the server
 	sgName := config.GetSecurityGroupName(vpcConfig.Name, "server")

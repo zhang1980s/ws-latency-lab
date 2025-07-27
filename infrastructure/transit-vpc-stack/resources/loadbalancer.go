@@ -45,7 +45,7 @@ func createAlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 
 	alb, err := lb.NewLoadBalancer(ctx, albName, &lb.LoadBalancerArgs{
 		Name:             pulumi.String(albName),
-		Internal:         pulumi.Bool(true),
+		Internal:         pulumi.Bool(false), // Set to false to make ALB publicly accessible
 		LoadBalancerType: pulumi.String("application"),
 		SecurityGroups:   pulumi.StringArray{sg.ID()},
 		Subnets:          subnetIDs,
@@ -166,7 +166,7 @@ func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 
 	nlb, err := lb.NewLoadBalancer(ctx, nlbName, &lb.LoadBalancerArgs{
 		Name:             pulumi.String(nlbName),
-		Internal:         pulumi.Bool(true),
+		Internal:         pulumi.Bool(false), // Set to false to make NLB publicly accessible
 		LoadBalancerType: pulumi.String("network"),
 		Subnets:          subnetIDs,
 		Tags:             utils.ApplyTags(ctx, nlbName, utils.GetNamedTags(nlbName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
@@ -187,8 +187,8 @@ func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 		HealthCheck: &lb.TargetGroupHealthCheckArgs{
 			Enabled:            pulumi.Bool(true),
 			Port:               pulumi.String(fmt.Sprintf("%d", config.AlbPort)), // Use the ALB port (443)
-			Protocol:           pulumi.String("HTTP"),                            // Use HTTP protocol
-			Path:               pulumi.String("/"),                               // Use root path
+			Protocol:           pulumi.String("HTTPS"),                           // Use HTTPS protocol
+			Path:               pulumi.String("/health"),                         // Use /health path
 			HealthyThreshold:   pulumi.Int(3),
 			UnhealthyThreshold: pulumi.Int(3),
 			Interval:           pulumi.Int(30),

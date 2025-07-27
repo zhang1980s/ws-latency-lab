@@ -19,7 +19,7 @@ func GetClientVpcConfig() VpcConfig {
 }
 
 // GetTransitVpcConfig returns the configuration for the transit VPC
-func GetTransitVpcConfig() VpcConfig {
+func GetTransitVpcConfig(cfg *Config) VpcConfig {
 	return VpcConfig{
 		Name:              TransitVpcPrefix,
 		CidrBlock:         TransitVpcCidr,
@@ -29,12 +29,12 @@ func GetTransitVpcConfig() VpcConfig {
 }
 
 // GetServerVpcConfig returns the configuration for the server VPC
-func GetServerVpcConfig() VpcConfig {
+func GetServerVpcConfig(cfg *Config) VpcConfig {
 	return VpcConfig{
 		Name:              ServerVpcPrefix,
 		CidrBlock:         ServerVpcCidr,
 		SubnetCidrBlocks:  []string{ServerSubnetCidr},
-		AvailabilityZones: []string{AvailabilityZone},
+		AvailabilityZones: []string{AvailabilityZone2},
 	}
 }
 
@@ -57,7 +57,7 @@ func GetNetworkAlbConfig() LoadBalancerConfig {
 		Type:            "application",
 		Port:            AlbPort,
 		Protocol:        "HTTPS",
-		Internal:        true,
+		Internal:        false, // Changed from true to false to make ALB public
 		HealthCheckPath: "/health",
 	}
 }
@@ -99,11 +99,13 @@ echo "127.0.0.1 ws-server" >> /etc/hosts
 }
 
 // EcrConfig represents the configuration for an ECR repository
+// Deprecated: Kept for backward compatibility, application will be run manually
 type EcrConfig struct {
 	Name string
 }
 
 // GetEcrConfig returns the configuration for the ECR repository
+// Deprecated: Kept for backward compatibility, application will be run manually
 func GetEcrConfig() EcrConfig {
 	return EcrConfig{
 		Name: "ws-server",

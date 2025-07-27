@@ -16,8 +16,6 @@ func main() {
 		}
 
 		// ECR repository reference removed - application will be run manually
-		// Define a placeholder for the repository URL
-		repositoryUrl := pulumi.String("placeholder-repository-url")
 
 		// Create VPC
 		vpc, subnets, routeTable, err := resources.CreateVpc(ctx, cfg)
