@@ -30,7 +30,7 @@ const (
 	ClientVpcPrefix  = "ws-client-vpc"
 	TransitVpcPrefix = "ws-transit-vpc"
 	ServerVpcPrefix  = "ws-server-vpc"
-	EcrPrefix        = "ws-server-ecr"
+	// EcrPrefix removed - application will be run manually
 )
 
 // EC2 instance configurations
@@ -50,7 +50,7 @@ const (
 
 // Stack names
 const (
-	EcrStackName        = "zhang1980s/ws-ecr-stack/dev"
+	// EcrStackName removed - application will be run manually
 	ClientVpcStackName  = "zhang1980s/ws-latency-client-vpc/dev"
 	TransitVpcStackName = "zhang1980s/ws-latency-transit-vpc/dev"
 	ServerVpcStackName  = "zhang1980s/ws-server-vpc-stack/dev"

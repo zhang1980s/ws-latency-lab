@@ -27,13 +27,7 @@ func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, s
 		return nil, nil, err
 	}
 
-	// Get ECR repository reference
-	ecrStackRef, err := pulumi.NewStackReference(ctx, config.EcrStackName, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ecrRepoUrl := ecrStackRef.GetOutput(pulumi.String("repositoryUrl"))
+	// ECR repository reference removed - application will be run manually
 
 	// Get the latest Amazon Linux 2023 minimal with kernel-6.12 AMI from SSM Parameter Store
 	ssmParam, err := ssm.LookupParameter(ctx, &ssm.LookupParameterArgs{
@@ -49,10 +43,9 @@ func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, s
 	}).(pulumi.StringOutput)
 
 	// Create user data script to set up the WebSocket client
-	userData := pulumi.All(ecrRepoUrl, logGroup.Name, endpointDns).ApplyT(func(args []interface{}) string {
-		repoUrl := args[0].(string)
-		logGroupName := args[1].(string)
-		dnsName := args[2].(string)
+	userData := pulumi.All(logGroup.Name, endpointDns).ApplyT(func(args []interface{}) string {
+		logGroupName := args[0].(string)
+		dnsName := args[1].(string)
 
 		return fmt.Sprintf(`#!/bin/bash
 # Set hostname to ws-client
@@ -103,29 +96,33 @@ systemctl enable amazon-cloudwatch-agent
 # Configure Docker to start on boot
 systemctl enable docker
 
-# Extract AWS region and account ID from the ECR repository URL
-ECR_URL="%s"
-AWS_REGION=$(echo $ECR_URL | cut -d'.' -f4)
-AWS_ACCOUNT_ID=$(echo $ECR_URL | cut -d'.' -f1)
-
-# Create a script to authenticate with ECR and pull the container image
-cat > /usr/local/bin/pull-ws-client.sh << 'EOF'
+# Create a script to run the WebSocket client
+cat > /usr/local/bin/run-ws-client.sh << 'EOF'
 #!/bin/bash
 
-# Get ECR login token and authenticate Docker
-aws ecr get-login-password --region %s | docker login --username AWS --password-stdin %s
+# Note: This script assumes the WebSocket client application is available locally
+# Since we're not using ECR anymore, you'll need to manually transfer and run the application
 
-# Pull the latest image
-docker pull %s:latest
+# Example of how to run the application directly (adjust as needed)
+# java -jar /path/to/ws-latency-app.jar -mode=client -server=wss://%s:%d -duration=30
 
-echo "Docker image pulled successfully. To run the client, use the following command:"
-echo "docker run -d --name ws-client --restart always -p %d:%d -e MODE=client -e WS_SERVER_URL=wss://%s:%d -e CLIENT_MODE=true %s:latest"
+# Example of how to run with Docker if you have a local image
+# docker run -d \
+#   --name ws-client \
+#   --restart always \
+#   -p %d:%d \
+#   -e MODE=client \
+#   -e WS_SERVER_URL=wss://%s:%d \
+#   -e CLIENT_MODE=true \
+#   your-local-image:latest
+
+echo "WebSocket client script placeholder - manual setup required"
 EOF
 
-chmod +x /usr/local/bin/pull-ws-client.sh
+chmod +x /usr/local/bin/run-ws-client.sh
 
-# Run the pull script to download the image
-/usr/local/bin/pull-ws-client.sh > /var/log/ws-client.log 2>&1
+# Create a log file with instructions
+echo "WebSocket client setup placeholder - manual setup required" > /var/log/ws-client.log
 
 # Create a README file with instructions for the user
 cat > /home/ec2-user/README.md << 'EOFREADME'
@@ -135,7 +132,7 @@ The Docker image has been pulled and is ready to use.
 
 To run the client, use one of the following methods:
 
-## Method 1: Using environment variables (recommended)
+## Method 1: Using environment variables (with Docker)
     docker run -d \
       --name ws-client \
       --restart always \
@@ -143,17 +140,20 @@ To run the client, use one of the following methods:
       -e MODE=client \
       -e WS_SERVER_URL=wss://ENDPOINT_DNS:NLB_PORT \
       -e CLIENT_MODE=true \
-      REPO_URL:latest
+      your-local-image:latest
 
-## Method 2: Using command-line arguments
+## Method 2: Using command-line arguments (with Docker)
     docker run -d \
       --name ws-client \
       --restart always \
       -p PORT:PORT \
-      REPO_URL:latest \
+      your-local-image:latest \
       -m client \
       -s wss://ENDPOINT_DNS:NLB_PORT \
       -d 30
+
+## Method 3: Running the Java application directly
+    java -jar ws-latency-app.jar -mode=client -server=wss://ENDPOINT_DNS:NLB_PORT -duration=30
 
 Note: Do not use -m=client format. Use -m client instead (with a space, not an equals sign).
 
@@ -174,22 +174,16 @@ EOFREADME
 sed -i "s|PORT|%d|g" /home/ec2-user/README.md
 sed -i "s|ENDPOINT_DNS|%s|g" /home/ec2-user/README.md
 sed -i "s|NLB_PORT|%d|g" /home/ec2-user/README.md
-sed -i "s|REPO_URL|%s|g" /home/ec2-user/README.md
 EOF
 
 chown ec2-user:ec2-user /home/ec2-user/README.md
 `,
 			logGroupName,
-			repoUrl,
-			cfg.Region,
-			repoUrl,
-			repoUrl,
+			dnsName, config.NlbPort,
 			config.WebSocketPort, config.WebSocketPort,
 			dnsName, config.NlbPort,
-			repoUrl,
 			config.WebSocketPort,
-			dnsName, config.NlbPort,
-			repoUrl)
+			dnsName, config.NlbPort)
 	}).(pulumi.StringOutput)
 
 	// Create EC2 instance with a larger root volume
@@ -256,28 +250,7 @@ func createIamRole(ctx *pulumi.Context, cfg *config.Config) (*iam.Role, *iam.Ins
 		return nil, nil, err
 	}
 
-	// Create policy for ECR access
-	_, err = iam.NewRolePolicy(ctx, "ws-client-ecr-policy", &iam.RolePolicyArgs{
-		Role: role.Name,
-		Policy: pulumi.String(`{
-			"Version": "2012-10-17",
-			"Statement": [
-				{
-					"Effect": "Allow",
-					"Action": [
-						"ecr:GetDownloadUrlForLayer",
-						"ecr:BatchGetImage",
-						"ecr:BatchCheckLayerAvailability",
-						"ecr:GetAuthorizationToken"
-					],
-					"Resource": "*"
-				}
-			]
-		}`),
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+	// ECR policy removed - application will be run manually
 
 	// Create instance profile
 	profileName := "ws-client-profile"

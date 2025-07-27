@@ -10,11 +10,8 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Starting WebSocket Latency Testing Infrastructure Deployment${NC}"
 
-# Build and push Docker image to ECR
-echo -e "${YELLOW}Building and pushing Docker image to ECR...${NC}"
-cd ..
-make
-cd infrastructure
+# No longer building and pushing Docker image to ECR
+# The application will be run manually
 
 # Function to deploy a stack
 deploy_stack() {
@@ -49,8 +46,7 @@ deploy_stack() {
     cd ..
 }
 
-# Deploy ECR stack
-deploy_stack "ecr-stack" "ECR"
+# ECR stack removed - application will be run manually
 
 # Deploy Server VPC stack
 deploy_stack "server-vpc-stack" "Server VPC"

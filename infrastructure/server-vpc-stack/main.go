@@ -15,13 +15,9 @@ func main() {
 			return err
 		}
 
-		// Get ECR repository reference
-		ecrStackRef, err := pulumi.NewStackReference(ctx, config.EcrStackName, nil)
-		if err != nil {
-			return err
-		}
-
-		repositoryUrl := ecrStackRef.GetOutput(pulumi.String("repositoryUrl"))
+		// ECR repository reference removed - application will be run manually
+		// Define a placeholder for the repository URL
+		repositoryUrl := pulumi.String("placeholder-repository-url")
 
 		// Create VPC
 		vpc, subnets, routeTable, err := resources.CreateVpc(ctx, cfg)
@@ -36,7 +32,7 @@ func main() {
 		}
 
 		// Create EC2 instance
-		instance, logGroup, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sg, repositoryUrl)
+		instance, logGroup, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sg)
 		if err != nil {
 			return err
 		}

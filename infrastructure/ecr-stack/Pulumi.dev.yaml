@@ -1,8 +1,0 @@
-config:
-  aws:region: ap-east-1
-  ws-ecr-stack:environment: dev
-  ws-ecr-stack:project: ws-latency-lab
-  ws-ecr-stack:owner: zzhe
-  ws-ecr-stack:customTags:
-    CostCenter: zzhe
-    auto-delete: no

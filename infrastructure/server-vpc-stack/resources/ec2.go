@@ -14,7 +14,7 @@ import (
 )
 
 // CreateEc2Resources creates an EC2 instance for the WebSocket server
-func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnet pulumi.IDOutput, sg *ec2.SecurityGroup, repositoryUrl pulumi.Output) (*ec2.Instance, *cloudwatch.LogGroup, error) {
+func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnet pulumi.IDOutput, sg *ec2.SecurityGroup) (*ec2.Instance, *cloudwatch.LogGroup, error) {
 	// Create IAM role for EC2
 	_, instanceProfile, err := createIamRole(ctx, cfg)
 	if err != nil {
@@ -36,9 +36,8 @@ func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, s
 	}
 
 	// Create user data script to set up the WebSocket server
-	userData := pulumi.All(repositoryUrl, logGroup.Name).ApplyT(func(args []interface{}) string {
-		url := args[0].(string)
-		logGroupName := args[1].(string)
+	userData := pulumi.All(logGroup.Name).ApplyT(func(args []interface{}) string {
+		logGroupName := args[0].(string)
 
 		return fmt.Sprintf(`#!/bin/bash
 # Set hostname to ws-server
@@ -89,33 +88,27 @@ systemctl enable amazon-cloudwatch-agent
 # Configure Docker to start on boot
 systemctl enable docker
 
-# Extract AWS region and account ID from the ECR repository URL
-ECR_URL="%s"
-AWS_REGION=$(echo $ECR_URL | cut -d'.' -f4)
-AWS_ACCOUNT_ID=$(echo $ECR_URL | cut -d'.' -f1)
-
-# Create a script to authenticate with ECR and run the container
+# Create a script to run the WebSocket server
 cat > /usr/local/bin/start-ws-server.sh << 'EOF'
 #!/bin/bash
 
-# Get ECR login token and authenticate Docker
-aws ecr get-login-password --region %s | docker login --username AWS --password-stdin %s
+# Note: This script assumes the WebSocket server application is available locally
+# Since we're not using ECR anymore, you'll need to manually transfer and run the application
 
-# Pull the latest image
-docker pull %s:latest
+# Example of how to run the application directly (adjust as needed)
+# java -jar /path/to/ws-latency-app.jar -mode=server -port=%d -rate=10 > /var/log/ws-server.log 2>&1
 
-# Remove existing container if it exists
-docker rm -f ws-server || true
+# Example of how to run with Docker if you have a local image
+# docker run -d \
+#   --name ws-server \
+#   --restart always \
+#   -p %d:%d \
+#   -e MODE=server \
+#   -e PORT=%d \
+#   -e EVENTS_PER_SECOND=10 \
+#   your-local-image:latest > /var/log/ws-server.log 2>&1
 
-# Run the container
-docker run -d \
-  --name ws-server \
-  --restart always \
-  -p %d:%d \
-  -e MODE=server \
-  -e PORT=%d \
-  -e EVENTS_PER_SECOND=10 \
-  %s:latest > /var/log/ws-server.log 2>&1
+echo "WebSocket server script placeholder - manual setup required" > /var/log/ws-server.log
 EOF
 
 chmod +x /usr/local/bin/start-ws-server.sh
@@ -152,13 +145,9 @@ EOF
 chmod 644 /etc/cron.d/ws-server-check
 `,
 			logGroupName,
-			url,
-			cfg.Region,
-			url,
-			url,
-			config.WebSocketPort, config.WebSocketPort,
 			config.WebSocketPort,
-			url)
+			config.WebSocketPort, config.WebSocketPort,
+			config.WebSocketPort)
 	}).(pulumi.StringOutput)
 
 	// Create EC2 instance with a larger root volume
