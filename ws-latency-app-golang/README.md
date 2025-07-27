@@ -12,6 +12,7 @@ This application is designed to measure WebSocket latency in two different modes
 - Support for both server-push and RTT measurement modes
 - Dual latency metrics in RTT mode (full RTT and server-to-client one-way latency)
 - Configurable event/request rates
+- Multiple rate control mechanisms in RTT mode (interval-based or burst)
 - Configurable payload sizes
 - Warm-up period to exclude initial connection overhead
 - Detailed latency statistics (min, max, mean, percentiles)
@@ -124,7 +125,11 @@ Parameters:
 #### Start the client:
 
 ```bash
+# Interval mode (default) - sends requests at regular intervals
 go run cmd/ws-latency-app/main.go -m client -a rtt -s ws://localhost:10443/ws -d 30 -r 10 --prewarm-count 100 --payload-size 100
+
+# Burst mode - sends specified number of requests at the beginning of each second
+go run cmd/ws-latency-app/main.go -m client -a rtt -s ws://localhost:10443/ws -d 30 -r 10 --prewarm-count 100 --payload-size 100 --rate-mode burst
 ```
 
 Parameters:
@@ -155,6 +160,9 @@ Parameters:
 - `-s, --server`: WebSocket server address (default: "ws://localhost:10443/ws")
 - `-d, --duration`: Test duration in seconds (default: 30)
 - `-r, --rate`: Requests per second in RTT mode (default: 10)
+- `--rate-mode`: Rate control mode in RTT mode: 'interval' or 'burst' (default: "interval")
+  - `interval`: Send requests evenly distributed throughout each second
+  - `burst`: Send all requests at the beginning of each second
 - `--prewarm-count`: Skip calculating latency for first N events (default: 100)
 - `--continuous`: Run in continuous monitoring mode
 
@@ -168,6 +176,23 @@ Note: This requires clock synchronization between server and client for accurate
 
 ### RTT Mode
 In RTT mode, the application now measures two different latency metrics:
+
+#### Rate Control Modes
+
+The RTT client supports two different rate control mechanisms:
+
+1. **Interval Mode (default)**: Sends requests at regular intervals based on the specified rate. For example, with `-r 10`, it sends one request every 100ms.
+
+2. **Burst Mode**: Sends the specified number of requests at the beginning of each second. For example, with `-r 10`, it sends 10 requests immediately at the start of each second, then waits until the next second begins.
+
+To select the rate control mode, use the `--rate-mode` parameter:
+- `--rate-mode interval`: Use interval-based rate control (default)
+- `--rate-mode burst`: Use burst mode (send specified number of messages at the start of each second)
+
+Burst mode is useful for:
+- Testing how the server handles periodic bursts of traffic
+- Measuring latency under bursty load conditions
+- Simulating real-world traffic patterns with periodic spikes
 
 1. **RTT (Round-Trip Time)**: This is the full round-trip time from when the client sends a request to when it receives the response. It's calculated as `receiveTime - sendTime` where:
    - `sendTime`: The timestamp when the client sent the request

@@ -6,6 +6,12 @@ const (
 	RttMode        = "rtt"
 )
 
+// Rate control mode constants
+const (
+	IntervalMode = "interval" // Send messages at regular intervals (default)
+	BurstMode    = "burst"    // Send all messages at once
+)
+
 // ServerConfig holds configuration for the WebSocket server in push mode
 type ServerConfig struct {
 	Port             int
@@ -40,4 +46,5 @@ type RttClientConfig struct {
 	PrewarmCount       int
 	InsecureSkipVerify bool
 	Continuous         bool
+	RateControlMode    string // "interval" or "burst"
 }

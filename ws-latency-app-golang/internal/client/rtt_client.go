@@ -83,19 +83,83 @@ func (c *WebSocketRttClient) Run() {
 	reportTicker := time.NewTicker(time.Duration(c.reportIntervalSecs) * time.Second)
 	defer reportTicker.Stop()
 
+	// Start message handler
+	go c.handleMessages()
+
+	// Choose rate control mechanism based on configuration
+	if c.config.RateControlMode == "burst" {
+		// Burst mode - send all messages at once
+		c.runBurstMode(durationTimer, reportTicker, interrupt)
+	} else {
+		// Default interval mode - send messages at regular intervals
+		c.runIntervalMode(durationTimer, reportTicker, interrupt)
+	}
+}
+
+// runIntervalMode runs the client with interval-based rate control
+func (c *WebSocketRttClient) runIntervalMode(durationTimer *time.Timer, reportTicker *time.Ticker, interrupt chan os.Signal) {
 	// Set up request ticker
 	requestInterval := time.Duration(1000/c.config.RequestsPerSecond) * time.Millisecond
 	requestTicker := time.NewTicker(requestInterval)
 	defer requestTicker.Stop()
 
-	// Start message handler
-	go c.handleMessages()
+	log.Printf("Running in interval mode with %d req/sec (interval: %v)",
+		c.config.RequestsPerSecond, requestInterval)
 
 	// Wait for test to complete or interrupt
 	for {
 		select {
 		case <-requestTicker.C:
 			c.sendRequest()
+		case <-durationTimer.C:
+			if !c.config.Continuous {
+				log.Printf("Test duration of %d seconds completed", c.config.TestDuration)
+				c.printFinalStatistics()
+				return
+			}
+		case <-reportTicker.C:
+			c.printStatistics()
+		case <-interrupt:
+			log.Println("Interrupt received, closing connection")
+			// Cleanly close the connection by sending a close message
+			err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Printf("Error sending close message: %v", err)
+			}
+			// Wait for the server to close the connection
+			select {
+			case <-c.done:
+			case <-time.After(time.Second):
+			}
+			c.printFinalStatistics()
+			return
+		case <-c.done:
+			log.Println("Connection closed by server")
+			c.printFinalStatistics()
+			return
+		}
+	}
+}
+
+// runBurstMode runs the client with burst-based rate control
+func (c *WebSocketRttClient) runBurstMode(durationTimer *time.Timer, reportTicker *time.Ticker, interrupt chan os.Signal) {
+	// Set up a ticker that fires once per second
+	secondTicker := time.NewTicker(time.Second)
+	defer secondTicker.Stop()
+
+	log.Printf("Running in burst mode: Sending %d messages at the start of each second",
+		c.config.RequestsPerSecond)
+
+	// Wait for test to complete or interrupt
+	for {
+		select {
+		case <-secondTicker.C:
+			// Send a burst of messages at the start of each second
+			for i := 0; i < c.config.RequestsPerSecond; i++ {
+				c.sendRequest()
+			}
+			log.Printf("Burst: Sent %d messages", c.config.RequestsPerSecond)
+
 		case <-durationTimer.C:
 			if !c.config.Continuous {
 				log.Printf("Test duration of %d seconds completed", c.config.TestDuration)

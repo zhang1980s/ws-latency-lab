@@ -24,6 +24,7 @@ func main() {
 	prewarmCount := flag.Int("prewarm-count", 100, "Skip calculating latency for first N events")
 	insecureSkipVerify := flag.Bool("insecure", false, "Skip TLS certificate verification")
 	continuous := flag.Bool("continuous", false, "Run in continuous monitoring mode")
+	rateControlMode := flag.String("rate-mode", "interval", "Rate control mode: 'interval' (default) or 'burst'")
 
 	// Parse command line flags
 	flag.Parse()
@@ -107,12 +108,13 @@ func main() {
 				PrewarmCount:       *prewarmCount,
 				InsecureSkipVerify: *insecureSkipVerify,
 				Continuous:         *continuous,
+				RateControlMode:    *rateControlMode,
 			}
 
 			// Create and run RTT client
 			rttClient := client.NewWebSocketRttClient(rttClientConfig)
-			log.Printf("Starting RTT WebSocket client connecting to %s for %s with rate %d req/sec\n",
-				*serverURL, getContinuousOrDuration(*continuous, *duration), *rate)
+			log.Printf("Starting RTT WebSocket client connecting to %s for %s with rate %d req/sec (mode: %s)\n",
+				*serverURL, getContinuousOrDuration(*continuous, *duration), *rate, *rateControlMode)
 			rttClient.Run()
 		}
 	}
