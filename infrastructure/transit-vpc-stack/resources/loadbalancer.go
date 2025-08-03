@@ -173,7 +173,7 @@ func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 
 	nlb, err := lb.NewLoadBalancer(ctx, nlbName, &lb.LoadBalancerArgs{
 		Name:             pulumi.String(nlbName),
-		Internal:         pulumi.Bool(false), // Set to false to make NLB publicly accessible
+		Internal:         pulumi.Bool(true), // Set to false to make NLB publicly accessible
 		LoadBalancerType: pulumi.String("network"),
 		Subnets:          subnetIDs,
 		// Enable access logging to S3 bucket
