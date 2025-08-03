@@ -24,14 +24,7 @@ func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc)
 				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
 				Description: pulumi.String("SSH access"),
 			},
-			// Allow HTTP access for health checks and WebSocket
-			&ec2.SecurityGroupIngressArgs{
-				Protocol:    pulumi.String("tcp"),
-				FromPort:    pulumi.Int(config.WebSocketPort),
-				ToPort:      pulumi.Int(config.WebSocketPort),
-				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-				Description: pulumi.String("Health check and WebSocket access"),
-			},
+			// Removed WebSocket port 10443 as it's not needed
 		},
 		Egress: ec2.SecurityGroupEgressArray{
 			// Allow all outbound traffic
