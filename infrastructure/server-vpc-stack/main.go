@@ -30,7 +30,7 @@ func main() {
 		}
 
 		// Create EC2 instance
-		instance, logGroup, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sg)
+		instance, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sg)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,6 @@ func main() {
 		ctx.Export("instanceId", instance.ID())
 		ctx.Export("instancePublicIp", instance.PublicIp)
 		ctx.Export("instancePrivateIp", instance.PrivateIp)
-		ctx.Export("logGroupName", logGroup.Name)
 
 		// Export route table ID for transit VPC stack to use
 		ctx.Export("routeTableId", routeTable.ID())

@@ -1,9 +1,6 @@
 package resources
 
 import (
-	"fmt"
-
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/cloudwatch"
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ssm"
@@ -14,17 +11,11 @@ import (
 )
 
 // CreateEc2Resources creates an EC2 instance for the WebSocket server
-func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnet pulumi.IDOutput, sg *ec2.SecurityGroup) (*ec2.Instance, *cloudwatch.LogGroup, error) {
+func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnet pulumi.IDOutput, sg *ec2.SecurityGroup) (*ec2.Instance, error) {
 	// Create IAM role for EC2
 	_, instanceProfile, err := createIamRole(ctx, cfg)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	// Create CloudWatch log group
-	logGroup, err := createEc2LogGroup(ctx, cfg)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Get the latest Amazon Linux 2023 minimal with kernel-6.12 AMI from SSM Parameter Store
@@ -32,14 +23,11 @@ func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, s
 		Name: config.AmazonLinux2023SsmParameter,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Create user data script to set up the WebSocket server
-	userData := pulumi.All(logGroup.Name).ApplyT(func(args []interface{}) string {
-		logGroupName := args[0].(string)
-
-		return fmt.Sprintf(`#!/bin/bash
+	userData := pulumi.String(`#!/bin/bash
 # Set hostname to ws-server
 hostnamectl set-hostname ws-server
 echo "127.0.0.1 ws-client" >> /etc/hosts
@@ -48,9 +36,7 @@ echo "127.0.0.1 ws-client" >> /etc/hosts
 dnf install -y tuned tuned-profiles-realtime
 systemctl enable --now tuned
 tuned-adm profile realtime
-`,
-			logGroupName)
-	}).(pulumi.StringOutput)
+`)
 
 	// Create EC2 instance with a larger root volume
 	instanceName := "ws-server-instance"
@@ -71,10 +57,10 @@ tuned-adm profile realtime
 		},
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return instance, logGroup, nil
+	return instance, nil
 }
 
 // createIamRole creates an IAM role for the EC2 instance
@@ -129,19 +115,4 @@ func createIamRole(ctx *pulumi.Context, cfg *config.Config) (*iam.Role, *iam.Ins
 	}
 
 	return role, instanceProfile, nil
-}
-
-// createEc2LogGroup creates a CloudWatch log group for the EC2 instance
-func createEc2LogGroup(ctx *pulumi.Context, cfg *config.Config) (*cloudwatch.LogGroup, error) {
-	logGroupName := "ws-server-logs"
-	logGroup, err := cloudwatch.NewLogGroup(ctx, logGroupName, &cloudwatch.LogGroupArgs{
-		Name:            pulumi.String("/ec2/ws-server"),
-		RetentionInDays: pulumi.Int(7),
-		Tags:            utils.ApplyTags(ctx, logGroupName, utils.GetNamedTags(logGroupName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return logGroup, nil
 }
