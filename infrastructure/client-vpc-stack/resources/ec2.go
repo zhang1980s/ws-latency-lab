@@ -69,8 +69,8 @@ tuned-adm profile realtime
 	instanceName := "ws-client-instance"
 	instance, err := ec2.NewInstance(ctx, instanceName, &ec2.InstanceArgs{
 		Ami:                      pulumi.String(ssmParam.Value),
-		InstanceType:             pulumi.String("m6i.8xlarge"),   // Use m6i.8xlarge as requested
-		KeyName:                  pulumi.String(cfg.KeyPairName), // Use keypair from configuration
+		InstanceType:             pulumi.String(config.ClientInstanceType), // Use ClientInstanceType from constants.go
+		KeyName:                  pulumi.String(cfg.KeyPairName),           // Use keypair from configuration
 		SubnetId:                 subnet,
 		VpcSecurityGroupIds:      pulumi.StringArray{sg.ID()},
 		IamInstanceProfile:       instanceProfile.Name,

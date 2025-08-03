@@ -53,9 +53,9 @@ func LoadConfig(ctx *pulumi.Context) (*Config, error) {
 	}
 
 	// Load transit VPC configuration
-	transitInstanceType := conf.Get("instanceType")
+	transitInstanceType := conf.Get("transitInstanceType")
 	if transitInstanceType == "" {
-		transitInstanceType = ClientInstanceType // Use default from constants.go if not specified
+		transitInstanceType = TransitInstanceType // Use default from constants.go if not specified
 	}
 
 	// Load custom tags
