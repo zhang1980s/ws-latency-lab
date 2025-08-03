@@ -31,12 +31,13 @@ func CreateTransitEc2Instance(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.
 	// Create user data script for the transit EC2 instance
 	userData := pulumi.String(fmt.Sprintf(`#!/bin/bash
 # Set hostname
-hostnamectl set-hostname transit-client-instance
-echo "127.0.0.1 transit-client-instance" >> /etc/hosts
+hostnamectl set-hostname transit-client
+echo "127.0.0.1 transit-client" >> /etc/hosts
 
-# Basic setup
-yum update -y
-yum install -y amazon-cloudwatch-agent
+# Install tuned and realtime profile
+dnf install -y tuned tuned-profiles-realtime
+systemctl enable --now tuned
+tuned-adm profile realtime
 `))
 
 	// Get VPC configuration to determine which subnet to use

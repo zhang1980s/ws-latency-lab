@@ -40,8 +40,14 @@ func CreateEc2Resources(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, s
 		logGroupName := args[0].(string)
 
 		return fmt.Sprintf(`#!/bin/bash
-# Empty user data script - application will be run manually
-echo "WebSocket server setup placeholder - manual setup required"
+# Set hostname to ws-server
+hostnamectl set-hostname ws-server
+echo "127.0.0.1 ws-client" >> /etc/hosts
+
+# Install tuned and realtime profile
+dnf install -y tuned tuned-profiles-realtime
+systemctl enable --now tuned
+tuned-adm profile realtime
 `,
 			logGroupName)
 	}).(pulumi.StringOutput)
