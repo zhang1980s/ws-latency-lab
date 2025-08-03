@@ -3,7 +3,10 @@ config:
   ws-server-vpc-stack:environment: dev
   ws-server-vpc-stack:project: ws-latency
   ws-server-vpc-stack:owner: zhang1980s
+  # The following values override defaults from constants.go
+  # KeyPairName default in constants.go: keypair-root-hkg
   ws-server-vpc-stack:keyPairName: keypair-root-hkg
+  # ServerInstanceType default in constants.go: m7i.8xlarge
   ws-server-vpc-stack:instanceType: "m7i.8xlarge"
   ws-server-vpc-stack:customTags:
     auto-delete: no

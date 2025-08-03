@@ -3,6 +3,8 @@ config:
   ws-latency-client-vpc:environment: dev
   ws-latency-client-vpc:project: ws-latency
   ws-latency-client-vpc:owner: zhang1980s
+  # The following values override defaults from constants.go
+  # KeyPairName default in constants.go: keypair-root-hkg
   ws-latency-client-vpc:keyPairName: keypair-root-hkg
   ws-latency-client-vpc:customTags:
     Environment: dev

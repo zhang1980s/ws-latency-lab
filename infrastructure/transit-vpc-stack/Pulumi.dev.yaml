@@ -4,7 +4,10 @@ config:
   ws-latency-transit-vpc:project: ws-latency
   ws-latency-transit-vpc:owner: zhang1980s
   ws-latency-transit-vpc:certificateArn: arn:aws:acm:ap-east-1:894855526703:certificate/1e80c588-68ff-42a2-b8a4-952c804e8af3
+  # The following values override defaults from constants.go
+  # KeyPairName default in constants.go: keypair-root-hkg
   ws-latency-transit-vpc:keyPairName: keypair-root-hkg
+  # TransitInstanceType default in constants.go: m7i.8xlarge
   ws-latency-transit-vpc:transitInstanceType: "m7i.8xlarge"
   ws-latency-transit-vpc:customTags:
     auto-delete: no
