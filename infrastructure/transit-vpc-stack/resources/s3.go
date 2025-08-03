@@ -1,6 +1,8 @@
 package resources
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/s3"
@@ -10,10 +12,25 @@ import (
 	"github.com/zhang1980s/ws-latency-lab/infrastructure/common/utils"
 )
 
+// generateRandomSuffix generates a random 8-character hex string
+func generateRandomSuffix() (string, error) {
+	bytes := make([]byte, 4) // 4 bytes = 8 hex characters
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
 // CreateAccessLogBucket creates an S3 bucket for storing ALB and NLB access logs
 func CreateAccessLogBucket(ctx *pulumi.Context, cfg *config.Config) (*s3.Bucket, error) {
-	// Create a unique bucket name using the project, environment, and a suffix
-	bucketName := fmt.Sprintf("%s-%s-lb-access-logs", cfg.Project, cfg.Environment)
+	// Generate a random suffix for the bucket name
+	randomSuffix, err := generateRandomSuffix()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate random suffix: %w", err)
+	}
+
+	// Create a unique bucket name using the project, environment, and a random suffix
+	bucketName := fmt.Sprintf("%s-%s-lb-access-logs-%s", cfg.Project, cfg.Environment, randomSuffix)
 
 	// Create the S3 bucket
 	bucket, err := s3.NewBucket(ctx, bucketName, &s3.BucketArgs{
