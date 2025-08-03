@@ -5,6 +5,7 @@ import (
 
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lb"
+	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/zhang1980s/ws-latency-lab/infrastructure/common/config"
@@ -12,19 +13,19 @@ import (
 )
 
 // CreateLoadBalancers creates the NLB and ALB in the middle VPC
-func CreateLoadBalancers(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, sg *ec2.SecurityGroup, serverVpcRef *pulumi.StackReference, serverVpcId, serverSubnetIds, serverSecurityGroupId pulumi.Output) (*lb.LoadBalancer, *lb.LoadBalancer, error) {
+func CreateLoadBalancers(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, sg *ec2.SecurityGroup, serverVpcRef *pulumi.StackReference, serverVpcId, serverSubnetIds, serverSecurityGroupId pulumi.Output, accessLogBucket *s3.Bucket) (*lb.LoadBalancer, *lb.LoadBalancer, error) {
 	// Get load balancer configurations
 	nlbConfig := config.GetNetworkNlbConfig()
 	albConfig := config.GetNetworkAlbConfig()
 
 	// Create ALB
-	alb, albTargetGroup, albListener, err := createAlb(ctx, cfg, vpc, subnets, sg, albConfig, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId)
+	alb, albTargetGroup, albListener, err := createAlb(ctx, cfg, vpc, subnets, sg, albConfig, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId, accessLogBucket)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Create NLB
-	nlb, err := createNlb(ctx, cfg, vpc, subnets, nlbConfig, alb, albTargetGroup, albListener)
+	nlb, err := createNlb(ctx, cfg, vpc, subnets, nlbConfig, alb, albTargetGroup, albListener, accessLogBucket)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -33,7 +34,7 @@ func CreateLoadBalancers(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, 
 }
 
 // createAlb creates an Application Load Balancer
-func createAlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, sg *ec2.SecurityGroup, albConfig config.LoadBalancerConfig, serverVpcRef *pulumi.StackReference, serverVpcId, serverSubnetIds, serverSecurityGroupId pulumi.Output) (*lb.LoadBalancer, *lb.TargetGroup, *lb.Listener, error) {
+func createAlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, sg *ec2.SecurityGroup, albConfig config.LoadBalancerConfig, serverVpcRef *pulumi.StackReference, serverVpcId, serverSubnetIds, serverSecurityGroupId pulumi.Output, accessLogBucket *s3.Bucket) (*lb.LoadBalancer, *lb.TargetGroup, *lb.Listener, error) {
 	// Create ALB
 	albName := albConfig.Name
 
@@ -49,7 +50,13 @@ func createAlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 		LoadBalancerType: pulumi.String("application"),
 		SecurityGroups:   pulumi.StringArray{sg.ID()},
 		Subnets:          subnetIDs,
-		Tags:             utils.ApplyTags(ctx, albName, utils.GetNamedTags(albName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+		// Enable access logging to S3 bucket
+		AccessLogs: &lb.LoadBalancerAccessLogsArgs{
+			Bucket:  accessLogBucket.ID(),
+			Enabled: pulumi.Bool(true),
+			Prefix:  pulumi.String("alb-logs"),
+		},
+		Tags: utils.ApplyTags(ctx, albName, utils.GetNamedTags(albName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
 	})
 	if err != nil {
 		return nil, nil, nil, err
@@ -154,7 +161,7 @@ func createAlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 }
 
 // createNlb creates a Network Load Balancer
-func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, nlbConfig config.LoadBalancerConfig, alb *lb.LoadBalancer, albTargetGroup *lb.TargetGroup, albListener *lb.Listener) (*lb.LoadBalancer, error) {
+func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []pulumi.IDOutput, nlbConfig config.LoadBalancerConfig, alb *lb.LoadBalancer, albTargetGroup *lb.TargetGroup, albListener *lb.Listener, accessLogBucket *s3.Bucket) (*lb.LoadBalancer, error) {
 	// Create NLB
 	nlbName := nlbConfig.Name
 
@@ -169,7 +176,13 @@ func createNlb(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc, subnets []
 		Internal:         pulumi.Bool(false), // Set to false to make NLB publicly accessible
 		LoadBalancerType: pulumi.String("network"),
 		Subnets:          subnetIDs,
-		Tags:             utils.ApplyTags(ctx, nlbName, utils.GetNamedTags(nlbName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+		// Enable access logging to S3 bucket
+		AccessLogs: &lb.LoadBalancerAccessLogsArgs{
+			Bucket:  accessLogBucket.ID(),
+			Enabled: pulumi.Bool(true),
+			Prefix:  pulumi.String("nlb-logs"),
+		},
+		Tags: utils.ApplyTags(ctx, nlbName, utils.GetNamedTags(nlbName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
 	})
 	if err != nil {
 		return nil, err

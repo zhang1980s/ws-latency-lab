@@ -44,8 +44,14 @@ func main() {
 			return err
 		}
 
+		// Create S3 bucket for load balancer access logs
+		accessLogBucket, err := resources.CreateAccessLogBucket(ctx, cfg)
+		if err != nil {
+			return err
+		}
+
 		// Create load balancers
-		alb, nlb, err := resources.CreateLoadBalancers(ctx, cfg, vpc, subnets, sg, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId)
+		alb, nlb, err := resources.CreateLoadBalancers(ctx, cfg, vpc, subnets, sg, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId, accessLogBucket)
 		if err != nil {
 			return err
 		}
@@ -78,6 +84,7 @@ func main() {
 		ctx.Export("endpointServiceName", endpointService.ServiceName)
 		ctx.Export("transitClientInstanceId", transitClientInstance.ID())
 		ctx.Export("transitClientInstancePublicIp", transitClientInstance.PublicIp)
+		ctx.Export("accessLogBucketName", accessLogBucket.ID())
 
 		return nil
 	})
