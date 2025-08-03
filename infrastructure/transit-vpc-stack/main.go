@@ -33,7 +33,7 @@ func main() {
 		}
 
 		// Create security groups
-		sg, err := resources.CreateSecurityGroups(ctx, cfg, vpc)
+		sgLb, sgClient, err := resources.CreateSecurityGroups(ctx, cfg, vpc)
 		if err != nil {
 			return err
 		}
@@ -51,13 +51,13 @@ func main() {
 		}
 
 		// Create load balancers
-		alb, nlb, err := resources.CreateLoadBalancers(ctx, cfg, vpc, subnets, sg, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId, accessLogBucket)
+		alb, nlb, err := resources.CreateLoadBalancers(ctx, cfg, vpc, subnets, sgLb, serverVpcRef, serverVpcId, serverSubnetIds, serverSecurityGroupId, accessLogBucket)
 		if err != nil {
 			return err
 		}
 
 		// Create transit client EC2 instance
-		transitClientInstance, err := resources.CreateTransitEc2Instance(ctx, cfg, vpc, subnets, sg)
+		transitClientInstance, err := resources.CreateTransitEc2Instance(ctx, cfg, vpc, subnets, sgClient)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,8 @@ func main() {
 			subnetArray = append(subnetArray, subnet)
 		}
 		ctx.Export("subnetIds", subnetArray)
-		ctx.Export("securityGroupId", sg.ID())
+		ctx.Export("securityGroupId", sgLb.ID())
+		ctx.Export("clientSecurityGroupId", sgClient.ID())
 		ctx.Export("albDnsName", alb.DnsName)
 		ctx.Export("nlbDnsName", nlb.DnsName)
 		ctx.Export("vpcPeeringId", peering.ID())

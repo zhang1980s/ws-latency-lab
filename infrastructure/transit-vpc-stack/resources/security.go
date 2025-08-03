@@ -11,24 +11,16 @@ import (
 )
 
 // CreateSecurityGroups creates security groups for the transit VPC
-func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc) (*ec2.SecurityGroup, error) {
+func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc) (*ec2.SecurityGroup, *ec2.SecurityGroup, error) {
 	// Get VPC configuration
 	vpcConfig := config.GetTransitVpcConfig(cfg)
 
 	// Create security group for the load balancers
-	sgName := config.GetSecurityGroupName(vpcConfig.Name, "lb")
-	sg, err := ec2.NewSecurityGroup(ctx, sgName, &ec2.SecurityGroupArgs{
+	sgLbName := config.GetSecurityGroupName(vpcConfig.Name, "lb")
+	sgLb, err := ec2.NewSecurityGroup(ctx, sgLbName, &ec2.SecurityGroupArgs{
 		VpcId:       vpc.ID(),
 		Description: pulumi.String("Security group for load balancers"),
 		Ingress: ec2.SecurityGroupIngressArray{
-			// Allow SSH from anywhere (for management)
-			&ec2.SecurityGroupIngressArgs{
-				Protocol:    pulumi.String("tcp"),
-				FromPort:    pulumi.Int(22),
-				ToPort:      pulumi.Int(22),
-				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-				Description: pulumi.String("SSH access"),
-			},
 			// Allow NLB traffic from anywhere
 			&ec2.SecurityGroupIngressArgs{
 				Protocol:    pulumi.String("tcp"),
@@ -56,11 +48,42 @@ func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc)
 				Description: pulumi.String("Allow all outbound traffic"),
 			},
 		},
-		Tags: utils.ApplyTags(ctx, sgName, utils.GetNamedTags(sgName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+		Tags: utils.ApplyTags(ctx, sgLbName, utils.GetNamedTags(sgLbName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return sg, nil
+	// Create security group for the transit client EC2 instance
+	sgClientName := config.GetSecurityGroupName(vpcConfig.Name, "client")
+	sgClient, err := ec2.NewSecurityGroup(ctx, sgClientName, &ec2.SecurityGroupArgs{
+		VpcId:       vpc.ID(),
+		Description: pulumi.String("Security group for transit client EC2 instance"),
+		Ingress: ec2.SecurityGroupIngressArray{
+			// Allow SSH from anywhere (for management)
+			&ec2.SecurityGroupIngressArgs{
+				Protocol:    pulumi.String("tcp"),
+				FromPort:    pulumi.Int(22),
+				ToPort:      pulumi.Int(22),
+				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
+				Description: pulumi.String("SSH access"),
+			},
+		},
+		Egress: ec2.SecurityGroupEgressArray{
+			// Allow all outbound traffic
+			&ec2.SecurityGroupEgressArgs{
+				Protocol:    pulumi.String("-1"),
+				FromPort:    pulumi.Int(0),
+				ToPort:      pulumi.Int(0),
+				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
+				Description: pulumi.String("Allow all outbound traffic"),
+			},
+		},
+		Tags: utils.ApplyTags(ctx, sgClientName, utils.GetNamedTags(sgClientName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sgLb, sgClient, nil
 }
