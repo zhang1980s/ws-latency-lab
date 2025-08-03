@@ -9,10 +9,10 @@ import (
 )
 
 // CreateSecurityGroups creates security groups for the client VPC
-func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc) (*ec2.SecurityGroup, error) {
-	// Create security group for client containers
-	sgName := config.FormatResourceName(cfg.Project, "client-sg")
-	sg, err := ec2.NewSecurityGroup(ctx, sgName, &ec2.SecurityGroupArgs{
+func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc) (*ec2.SecurityGroup, *ec2.SecurityGroup, error) {
+	// Create security group for client EC2 instance
+	sgClientName := config.FormatResourceName(cfg.Project, "sg-client")
+	sgClient, err := ec2.NewSecurityGroup(ctx, sgClientName, &ec2.SecurityGroupArgs{
 		VpcId:       vpc.ID(),
 		Description: pulumi.String("Security group for WebSocket latency test client"),
 		Ingress: ec2.SecurityGroupIngressArray{
@@ -36,11 +36,42 @@ func CreateSecurityGroups(ctx *pulumi.Context, cfg *config.Config, vpc *ec2.Vpc)
 				Description: pulumi.String("Allow all outbound traffic"),
 			},
 		},
-		Tags: utils.ApplyTags(ctx, sgName, utils.GetNamedTags(sgName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+		Tags: utils.ApplyTags(ctx, sgClientName, utils.GetNamedTags(sgClientName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return sg, nil
+	// Create dedicated security group for VPC endpoint
+	sgEndpointName := config.FormatResourceName(cfg.Project, "sg-endpoint")
+	sgEndpoint, err := ec2.NewSecurityGroup(ctx, sgEndpointName, &ec2.SecurityGroupArgs{
+		VpcId:       vpc.ID(),
+		Description: pulumi.String("Security group for VPC endpoint"),
+		Ingress: ec2.SecurityGroupIngressArray{
+			// Allow access from client VPC CIDR to port 8443
+			&ec2.SecurityGroupIngressArgs{
+				Protocol:    pulumi.String("tcp"),
+				FromPort:    pulumi.Int(8443),
+				ToPort:      pulumi.Int(8443),
+				CidrBlocks:  pulumi.StringArray{pulumi.String(config.ClientVpcCidr)},
+				Description: pulumi.String("Allow access from client VPC to NLB port"),
+			},
+		},
+		Egress: ec2.SecurityGroupEgressArray{
+			// Allow all outbound traffic
+			&ec2.SecurityGroupEgressArgs{
+				Protocol:    pulumi.String("-1"),
+				FromPort:    pulumi.Int(0),
+				ToPort:      pulumi.Int(0),
+				CidrBlocks:  pulumi.StringArray{pulumi.String("0.0.0.0/0")},
+				Description: pulumi.String("Allow all outbound traffic"),
+			},
+		},
+		Tags: utils.ApplyTags(ctx, sgEndpointName, utils.GetNamedTags(sgEndpointName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sgClient, sgEndpoint, nil
 }

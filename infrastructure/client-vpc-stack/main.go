@@ -31,19 +31,19 @@ func main() {
 		}
 
 		// Create security groups
-		sg, err := resources.CreateSecurityGroups(ctx, cfg, vpc)
+		sgClient, sgEndpoint, err := resources.CreateSecurityGroups(ctx, cfg, vpc)
 		if err != nil {
 			return err
 		}
 
 		// Create VPC endpoint to connect to the endpoint service
-		endpoint, err := resources.CreateVpcEndpoint(ctx, cfg, vpc, subnets, sg, endpointServiceName)
+		endpoint, err := resources.CreateVpcEndpoint(ctx, cfg, vpc, subnets, sgEndpoint, endpointServiceName)
 		if err != nil {
 			return err
 		}
 
 		// Create EC2 instance for client
-		instance, logGroup, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sg, endpoint)
+		instance, logGroup, err := resources.CreateEc2Resources(ctx, cfg, vpc, subnets[0], sgClient, endpoint)
 		if err != nil {
 			return err
 		}
@@ -57,7 +57,8 @@ func main() {
 			subnetArray = append(subnetArray, subnet)
 		}
 		ctx.Export("subnetIds", subnetArray)
-		ctx.Export("securityGroupId", sg.ID())
+		ctx.Export("clientSecurityGroupId", sgClient.ID())
+		ctx.Export("endpointSecurityGroupId", sgEndpoint.ID())
 		ctx.Export("endpointId", endpoint.ID())
 		ctx.Export("endpointDnsEntries", endpoint.DnsEntries)
 		ctx.Export("instanceId", instance.ID())
