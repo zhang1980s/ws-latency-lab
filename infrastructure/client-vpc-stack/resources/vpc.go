@@ -52,7 +52,7 @@ func CreateVpc(ctx *pulumi.Context, cfg *config.Config) (*ec2.Vpc, []pulumi.IDOu
 	publicSubnets = append(publicSubnets, publicSubnet)
 
 	// Create route table for public subnets
-	publicRtName := config.FormatResourceName(vpcName, "public-rt")
+	publicRtName := config.FormatResourceName(vpcName, "rt-public")
 	publicRt, err := ec2.NewRouteTable(ctx, publicRtName, &ec2.RouteTableArgs{
 		VpcId: vpc.ID(),
 		Tags:  utils.ApplyTags(ctx, publicRtName, utils.GetNamedTags(publicRtName, cfg.Environment, cfg.Project, cfg.Owner, cfg.CustomTags)),

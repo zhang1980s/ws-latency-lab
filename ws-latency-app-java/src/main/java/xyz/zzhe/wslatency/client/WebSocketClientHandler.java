@@ -137,7 +137,13 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
             // Log periodically
             long count = messagesReceived.incrementAndGet();
             if (count % 100 == 0) {
-                logger.debug("Received {} messages, last latency: {} µs", count, latency);
+                logger.debug("Received {} messages, last latency: {} ns", count, latency);
+            }
+            
+            // Signal completion when we've received enough responses
+            // This is important to ensure the test completes properly
+            if (added && statistics.getSampleCount() >= 100) {
+                completionLatch.countDown();
             }
         } catch (Exception e) {
             logger.error("Error processing message", e);

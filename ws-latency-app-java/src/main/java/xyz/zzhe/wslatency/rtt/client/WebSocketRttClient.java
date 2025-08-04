@@ -44,7 +44,6 @@ public class WebSocketRttClient {
 
     private final RttClientConfig config;
     private final StatisticsCalculator rttStatistics;
-    private final StatisticsCalculator oneWayLatencyStatistics;
     private final CountDownLatch connectionLatch = new CountDownLatch(1);
     private final CountDownLatch completionLatch = new CountDownLatch(1);
     private final AtomicLong sequence = new AtomicLong(0);
@@ -63,7 +62,6 @@ public class WebSocketRttClient {
     public WebSocketRttClient(RttClientConfig config) {
         this.config = config;
         this.rttStatistics = new StatisticsCalculator(config.getPrewarmCount());
-        this.oneWayLatencyStatistics = new StatisticsCalculator(config.getPrewarmCount());
     }
 
     /**
@@ -134,8 +132,7 @@ public class WebSocketRttClient {
                         uri, WebSocketVersion.V13, null, true, new DefaultHttpHeaders()),
                 connectionLatch,
                 completionLatch,
-                rttStatistics,
-                oneWayLatencyStatistics
+                rttStatistics
         );
 
         // Configure bootstrap
@@ -259,9 +256,12 @@ public class WebSocketRttClient {
                 // Run for specified duration
                 logger.info("Running for {} seconds", config.getTestDuration());
                 
-                // Wait for test duration
-                if (!completionLatch.await(config.getTestDuration(), TimeUnit.SECONDS)) {
-                    logger.info("Test duration completed");
+                // Wait for test duration or completion
+                boolean completed = completionLatch.await(config.getTestDuration(), TimeUnit.SECONDS);
+                if (completed) {
+                    logger.info("Test completed successfully");
+                } else {
+                    logger.info("Test duration completed without receiving enough samples");
                 }
             }
         } catch (InterruptedException e) {
@@ -274,21 +274,18 @@ public class WebSocketRttClient {
         
         // Calculate and display statistics
         LatencyStats rttStats = rttStatistics.calculate();
-        LatencyStats oneWayStats = oneWayLatencyStatistics.calculate();
         
-        logger.info("Test completed with {} RTT samples and {} one-way latency samples ({} skipped for warm-up)",
-                rttStatistics.getSampleCount(), oneWayLatencyStatistics.getSampleCount(),
-                rttStatistics.getSkippedCount());
-        
+        logger.info("Test completed with {} RTT samples ({} skipped for warm-up)",
+                rttStatistics.getSampleCount(), rttStatistics.getSkippedCount());
         // Output RTT latency metrics
-        System.out.println("\n========== RTT LATENCY TEST RESULTS ==========");
+        System.out.println("\n============= RTT MEASUREMENT =============");
+        System.out.println("========== RTT LATENCY TEST RESULTS ==========");
+        System.out.println("(Round-Trip Time: client send → server → client receive)");
         System.out.println(rttStats.toString());
+        System.out.println("RTT measurements use only the client's clock and are not");
+        System.out.println("affected by clock synchronization issues between machines.");
         System.out.println("=============================================\n");
         
-        // Output one-way latency metrics
-        System.out.println("\n========== ONE-WAY LATENCY TEST RESULTS ==========");
-        System.out.println(oneWayStats.toString());
-        System.out.println("==================================================\n");
         
     }
 

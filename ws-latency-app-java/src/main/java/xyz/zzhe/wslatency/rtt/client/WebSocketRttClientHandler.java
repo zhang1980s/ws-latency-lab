@@ -24,7 +24,6 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
     private final CountDownLatch connectionLatch;
     private final CountDownLatch completionLatch;
     private final StatisticsCalculator rttStatistics;
-    private final StatisticsCalculator oneWayLatencyStatistics;
     private final AtomicLong messagesReceived = new AtomicLong(0);
     
     private ChannelPromise handshakeFuture;
@@ -36,18 +35,15 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
      * @param connectionLatch        Connection latch to count down when connected
      * @param completionLatch        Completion latch to count down when test is complete
      * @param rttStatistics          Statistics calculator for RTT
-     * @param oneWayLatencyStatistics Statistics calculator for one-way latency
      */
     public WebSocketRttClientHandler(WebSocketClientHandshaker handshaker,
                                    CountDownLatch connectionLatch,
                                    CountDownLatch completionLatch,
-                                   StatisticsCalculator rttStatistics,
-                                   StatisticsCalculator oneWayLatencyStatistics) {
+                                   StatisticsCalculator rttStatistics) {
         this.handshaker = handshaker;
         this.connectionLatch = connectionLatch;
         this.completionLatch = completionLatch;
         this.rttStatistics = rttStatistics;
-        this.oneWayLatencyStatistics = oneWayLatencyStatistics;
     }
 
     /**
@@ -130,19 +126,23 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
             // Update receive timestamp
             rttMessage.setClientReceiveTimestampNs(receiveTime);
             
-            // Calculate RTT and one-way latency
+            // Calculate RTT
             long rtt = rttMessage.calculateRttNs();
-            long oneWayLatency = rttMessage.calculateOneWayLatencyNs();
             
             // Add to statistics
             boolean rttAdded = rttStatistics.addSample(rtt);
-            boolean oneWayAdded = oneWayLatencyStatistics.addSample(oneWayLatency);
             
             // Log periodically
             long count = messagesReceived.incrementAndGet();
             if (count % 100 == 0) {
-                logger.debug("Received {} messages, last RTT: {} ns, last one-way latency: {} ns",
-                        count, rtt, oneWayLatency);
+                logger.debug("Received {} messages, last RTT: {} ns",
+                        count, rtt);
+            }
+            
+            // Signal completion when we've received enough responses
+            // This is important to ensure the test completes properly
+            if (rttAdded && rttStatistics.getSampleCount() >= 100) {
+                completionLatch.countDown();
             }
         } catch (Exception e) {
             logger.error("Error processing message", e);

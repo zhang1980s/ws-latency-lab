@@ -198,14 +198,7 @@ public class RttMessage {
         return clientReceiveTimestampNs - serverTimestampNs;
     }
 
-    /**
-     * Calculate the one-way latency (server send to client receive) in nanoseconds.
-     *
-     * @return The one-way latency in nanoseconds
-     */
-    public long calculateOneWayLatencyNs() {
-        return clientReceiveTimestampNs - serverSendTimestampNs;
-    }
+    // One-way latency calculation removed as it's affected by clock skew between client and server
 
     @Override
     public String toString() {

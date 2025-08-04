@@ -29,10 +29,25 @@ public class TimeUtils {
      *
      * @return Current time in nanoseconds
      */
+    // Base nanosecond time reference (initialized at class load time)
+    private static final long SYSTEM_NANO_TIME_ORIGIN = System.nanoTime();
+    private static final long WALL_TIME_ORIGIN = System.currentTimeMillis();
+    
+    /**
+     * Get the current time in nanoseconds since the epoch.
+     * This method ensures monotonically increasing timestamps by using
+     * System.nanoTime() for elapsed time measurement and wall clock for
+     * absolute time reference.
+     *
+     * @return Current time in nanoseconds
+     */
     public static long getCurrentTimeNanos() {
-        // Combine wall clock time with nanosecond precision
-        // This provides both absolute time reference and nanosecond precision
-        return Instant.now().toEpochMilli() * 1_000_000 + (System.nanoTime() % 1_000_000);
+        // Calculate elapsed nanos since our reference point
+        long elapsedNanos = System.nanoTime() - SYSTEM_NANO_TIME_ORIGIN;
+        
+        // Add to our wall clock origin (converted to nanos)
+        // This gives us wall clock time + elapsed nanos since startup
+        return (WALL_TIME_ORIGIN * 1_000_000) + elapsedNanos;
     }
     
     /**

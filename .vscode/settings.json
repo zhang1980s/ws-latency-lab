@@ -9,5 +9,6 @@
     },
     "go.alternateTools": {
         "gopls": "/home/ec2-user/go/bin/gopls"
-    }
+    },
+    "kiroAgent.configureMCP": "Enabled"
 }
