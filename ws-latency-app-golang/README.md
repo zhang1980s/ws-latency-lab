@@ -1,4 +1,4 @@
-# WebSocket Latency Test Application
+# WebSocket Latency Test Application (Go Implementation)
 
 A high-performance WebSocket latency testing tool written in Go. This application measures the round-trip time (RTT) between a WebSocket client and server with precise microsecond timing.
 
@@ -12,6 +12,7 @@ A high-performance WebSocket latency testing tool written in Go. This applicatio
 - Detailed latency statistics (min, max, P10, P50, P90, P99, mean)
 - Low-latency optimizations (TCP_NODELAY, etc.)
 - Random message generation with consistent byte size
+- Client IP address logging (both HTTP and TCP client IPs)
 
 ## Code Logic
 
@@ -34,7 +35,9 @@ graph TD
 ```
 
 - The server creates a WebSocket endpoint at `/ws` and a health check endpoint at `/health`
-- When a client connects, it sets `TCP_NODELAY` to disable Nagle's algorithm for lower latency
+- When a client connects:
+  - Logs both HTTP and TCP client IP addresses
+  - Sets `TCP_NODELAY` to disable Nagle's algorithm for lower latency
 - For each message received:
   - Parses the JSON message
   - Adds a server timestamp to the `_test` field using `processMessage` method
@@ -142,20 +145,14 @@ ws-latency-app-golang/
 │       └── main.go      # Main application entry point
 ├── pkg/
 │   ├── client/
-│   │   ├── client.go    # WebSocket client implementation
-│   │   └── client_test.go # Client unit tests
+│   │   └── client.go    # WebSocket client implementation
 │   ├── server/
-│   │   ├── server.go    # WebSocket server implementation
-│   │   └── server_test.go # Server unit tests
+│   │   └── server.go    # WebSocket server implementation
 │   └── stats/
-│       ├── stats.go     # Latency statistics calculation
-│       └── stats_test.go # Statistics unit tests
-├── test.sh              # Test automation script
+│       └── stats.go     # Latency statistics calculation
+├── Makefile             # Build automation
 ├── go.mod               # Go module file
-├── go.sum               # Go module checksums
 └── .gitignore           # Git ignore file
-
-For the original test plan, see [../websocket_latency_test_plan.md](../websocket_latency_test_plan.md) in the root directory.
 ```
 
 ## Requirements
@@ -167,8 +164,8 @@ For the original test plan, see [../websocket_latency_test_plan.md](../websocket
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/ws-latency-app-golang.git
-   cd ws-latency-app-golang
+   git clone https://github.com/yourusername/ws-latency-lab.git
+   cd ws-latency-lab/ws-latency-app-golang
    ```
 
 2. Install dependencies and build the application using the Makefile:
@@ -209,13 +206,18 @@ make help         # Show this help message
 ./ws-latency-app -mode=server [-port=8080]
 ```
 
+The server will log client connections with both HTTP and TCP client IP addresses:
+```
+2025/08/04 08:45:12 Client connected - HTTP IP: 127.0.0.1, TCP IP: 127.0.0.1
+```
+
 Options:
 - `-port`: Port for the server to listen on (default: 8080)
 
 ### Running the Client
 
 ```bash
-./ws-latency-app -mode=client [-server=ws://localhost:8080/ws] [-rate=10] [-duration=30] [-prewarm-count=100] [-insecure]
+./ws-latency-app -mode=client [-server=ws://localhost:8080/ws] [-rate=10] [-duration=30] [-prewarm-count=100] [-insecure] [-continuous]
 ```
 
 Options:
@@ -224,6 +226,7 @@ Options:
 - `-duration`: Test duration in seconds (default: 30)
 - `-prewarm-count`: Skip calculating RTT for first N messages (default: 100)
 - `-insecure`: Skip TLS certificate verification (not recommended for production)
+- `-continuous`: Run in continuous monitoring mode (ignores duration)
 
 ## Automated Testing
 
