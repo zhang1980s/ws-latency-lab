@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Represents a WebSocket message for RTT (Round-Trip Time) testing.
+ * Uses microsecond precision for all timestamps.
  */
 public class RttMessage {
     @JsonProperty("message_id")
@@ -12,17 +13,17 @@ public class RttMessage {
     @JsonProperty("sequence")
     private long sequence;
     
-    @JsonProperty("client_send_ts_ns")
-    private long clientSendTimestampNs;
+    @JsonProperty("client_send_ts_us")
+    private long clientSendTimestampUs;
     
-    @JsonProperty("server_ts_ns")
-    private long serverTimestampNs;
+    @JsonProperty("server_ts_us")
+    private long serverTimestampUs;
     
-    @JsonProperty("server_send_ts_ns")
-    private long serverSendTimestampNs;
+    @JsonProperty("server_send_ts_us")
+    private long serverSendTimestampUs;
     
-    @JsonProperty("client_recv_ts_ns")
-    private long clientReceiveTimestampNs;
+    @JsonProperty("client_recv_ts_us")
+    private long clientReceiveTimestampUs;
     
     @JsonProperty("payload")
     private String payload;
@@ -80,77 +81,77 @@ public class RttMessage {
     }
 
     /**
-     * Get the client send timestamp in nanoseconds.
+     * Get the client send timestamp in microseconds.
      *
      * @return The client send timestamp
      */
-    public long getClientSendTimestampNs() {
-        return clientSendTimestampNs;
+    public long getClientSendTimestampUs() {
+        return clientSendTimestampUs;
     }
 
     /**
-     * Set the client send timestamp in nanoseconds.
+     * Set the client send timestamp in microseconds.
      *
-     * @param clientSendTimestampNs The client send timestamp
+     * @param clientSendTimestampUs The client send timestamp
      */
-    public void setClientSendTimestampNs(long clientSendTimestampNs) {
-        this.clientSendTimestampNs = clientSendTimestampNs;
+    public void setClientSendTimestampUs(long clientSendTimestampUs) {
+        this.clientSendTimestampUs = clientSendTimestampUs;
     }
 
     /**
-     * Get the server timestamp in nanoseconds.
+     * Get the server timestamp in microseconds.
      *
      * @return The server timestamp
      */
-    public long getServerTimestampNs() {
-        return serverTimestampNs;
+    public long getServerTimestampUs() {
+        return serverTimestampUs;
     }
 
     /**
-     * Set the server timestamp in nanoseconds.
+     * Set the server timestamp in microseconds.
      *
-     * @param serverTimestampNs The server timestamp
+     * @param serverTimestampUs The server timestamp
      */
-    public void setServerTimestampNs(long serverTimestampNs) {
-        this.serverTimestampNs = serverTimestampNs;
+    public void setServerTimestampUs(long serverTimestampUs) {
+        this.serverTimestampUs = serverTimestampUs;
     }
 
     /**
-     * Get the client receive timestamp in nanoseconds.
+     * Get the client receive timestamp in microseconds.
      *
      * @return The client receive timestamp
      */
-    public long getClientReceiveTimestampNs() {
-        return clientReceiveTimestampNs;
+    public long getClientReceiveTimestampUs() {
+        return clientReceiveTimestampUs;
     }
 
     /**
-     * Set the client receive timestamp in nanoseconds.
+     * Set the client receive timestamp in microseconds.
      *
-     * @param clientReceiveTimestampNs The client receive timestamp
+     * @param clientReceiveTimestampUs The client receive timestamp
      */
-    public void setClientReceiveTimestampNs(long clientReceiveTimestampNs) {
-        this.clientReceiveTimestampNs = clientReceiveTimestampNs;
+    public void setClientReceiveTimestampUs(long clientReceiveTimestampUs) {
+        this.clientReceiveTimestampUs = clientReceiveTimestampUs;
     }
     
     /**
-     * Get the server send timestamp in nanoseconds.
+     * Get the server send timestamp in microseconds.
      *
-     * @return Server send timestamp in nanoseconds
+     * @return Server send timestamp in microseconds
      */
-    @JsonProperty("server_send_ts_ns")
-    public long getServerSendTimestampNs() {
-        return serverSendTimestampNs;
+    @JsonProperty("server_send_ts_us")
+    public long getServerSendTimestampUs() {
+        return serverSendTimestampUs;
     }
 
     /**
-     * Set the server send timestamp in nanoseconds.
+     * Set the server send timestamp in microseconds.
      *
-     * @param serverSendTimestampNs Server send timestamp in nanoseconds
+     * @param serverSendTimestampUs Server send timestamp in microseconds
      */
-    @JsonProperty("server_send_ts_ns")
-    public void setServerSendTimestampNs(long serverSendTimestampNs) {
-        this.serverSendTimestampNs = serverSendTimestampNs;
+    @JsonProperty("server_send_ts_us")
+    public void setServerSendTimestampUs(long serverSendTimestampUs) {
+        this.serverSendTimestampUs = serverSendTimestampUs;
     }
 
     /**
@@ -172,43 +173,41 @@ public class RttMessage {
     }
 
     /**
-     * Calculate the RTT (Round-Trip Time) in nanoseconds.
+     * Calculate the RTT (Round-Trip Time) in microseconds.
      *
-     * @return The RTT in nanoseconds
+     * @return The RTT in microseconds
      */
-    public long calculateRttNs() {
-        return clientReceiveTimestampNs - clientSendTimestampNs;
+    public long calculateRttUs() {
+        return clientReceiveTimestampUs - clientSendTimestampUs;
     }
 
     /**
-     * Calculate the server processing time in nanoseconds.
+     * Calculate the server processing time in microseconds.
      *
-     * @return The server processing time in nanoseconds
+     * @return The server processing time in microseconds
      */
-    public long calculateServerProcessingTimeNs() {
-        return serverTimestampNs - clientSendTimestampNs;
+    public long calculateServerProcessingTimeUs() {
+        return serverTimestampUs - clientSendTimestampUs;
     }
 
     /**
-     * Calculate the client processing time in nanoseconds.
+     * Calculate the client processing time in microseconds.
      *
-     * @return The client processing time in nanoseconds
+     * @return The client processing time in microseconds
      */
-    public long calculateClientProcessingTimeNs() {
-        return clientReceiveTimestampNs - serverTimestampNs;
+    public long calculateClientProcessingTimeUs() {
+        return clientReceiveTimestampUs - serverTimestampUs;
     }
-
-    // One-way latency calculation removed as it's affected by clock skew between client and server
 
     @Override
     public String toString() {
         return "RttMessage{" +
                 "messageId='" + messageId + '\'' +
                 ", sequence=" + sequence +
-                ", clientSendTimestampNs=" + clientSendTimestampNs +
-                ", serverTimestampNs=" + serverTimestampNs +
-                ", serverSendTimestampNs=" + serverSendTimestampNs +
-                ", clientReceiveTimestampNs=" + clientReceiveTimestampNs +
+                ", clientSendTimestampUs=" + clientSendTimestampUs +
+                ", serverTimestampUs=" + serverTimestampUs +
+                ", serverSendTimestampUs=" + serverSendTimestampUs +
+                ", clientReceiveTimestampUs=" + clientReceiveTimestampUs +
                 ", payload='" + (payload != null ? payload.substring(0, Math.min(20, payload.length())) + "..." : "null") + '\'' +
                 '}';
     }

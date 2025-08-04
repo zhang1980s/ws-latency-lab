@@ -17,6 +17,12 @@
 
 # Go workspace file
 go.work
+go.sum
+
+# Test files
+*_test.go
+pkg/client/metrics.go
+pkg/stats/
 
 # Test results and temporary files
 *.csv

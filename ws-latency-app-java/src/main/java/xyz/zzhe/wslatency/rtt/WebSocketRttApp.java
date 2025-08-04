@@ -18,10 +18,10 @@ import java.util.concurrent.Callable;
  * This implementation uses a request-response model to measure Round-Trip Time (RTT).
  */
 @Command(
-    name = "ws-rtt-test",
+    name = "ws-latency-test",
     mixinStandardHelpOptions = true,
-    version = "WebSocket RTT Test 1.0.0",
-    description = "WebSocket RTT Testing Tool with request-response model"
+    version = "WebSocket Latency Test 1.0.0",
+    description = "WebSocket Latency Testing Tool for measuring Round-Trip Time (RTT)"
 )
 public class WebSocketRttApp implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketRttApp.class);
@@ -124,7 +124,7 @@ public class WebSocketRttApp implements Callable<Integer> {
      * Runs the application in server mode.
      */
     private void runServer() {
-        logger.info("Starting RTT server on port {}", port);
+        logger.info("Starting RTT server on port {} with TCP_NODELAY enabled", port);
 
         // Create server configuration
         RttServerConfig config = new RttServerConfig();
@@ -152,6 +152,7 @@ public class WebSocketRttApp implements Callable<Integer> {
     private void runClient() {
         logger.info("Starting RTT client connecting to {} for {} seconds with rate {} req/sec",
                 serverUrl, continuous ? "continuous monitoring" : testDuration, requestsPerSecond);
+        logger.info("TCP_NODELAY enabled for optimal performance");
 
         // Create client configuration
         RttClientConfig config = new RttClientConfig();

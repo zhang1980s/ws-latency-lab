@@ -1,15 +1,15 @@
 # WebSocket Latency Testing Application (Java)
 
-A high-performance WebSocket latency testing tool written in Java. This application measures the one-way latency from a WebSocket server to clients with precise nanosecond timing.
+A high-performance WebSocket latency testing tool written in Java. This application measures the round-trip time (RTT) between a WebSocket client and server with precise microsecond timing.
 
 ## Features
 
-- Server-push model: server generates events and sends to clients
+- Request-response model for RTT measurement
 - Netty-based implementation for high performance and low latency
-- Configurable event rate (events per second)
+- Configurable request rate (requests per second)
 - Detailed latency statistics (min, max, P10, P50, P90, P99, mean)
 - Direct console output of latency metrics
-- Low-latency optimizations (TCP_NODELAY, native epoll transport when available, etc.)
+- Advanced low-latency optimizations (TCP_NODELAY, optimized buffer sizes, native epoll transport when available)
 - Docker containerization
 
 ## How It Works
@@ -18,70 +18,71 @@ A high-performance WebSocket latency testing tool written in Java. This applicat
 ┌─────────────────┐                                  ┌─────────────────┐
 │                 │                                  │                 │
 │  WebSocket      │                                  │  WebSocket      │
-│  Server         │                                  │  Client         │
+│  Client         │                                  │  Server         │
 │                 │                                  │                 │
-│  ┌───────────┐  │                                  │  ┌───────────┐  │
-│  │           │  │  1. Generate event with          │  │           │  │
-│  │ Event     │──┼─────timestamp────────────────────┼─▶│ WebSocket │  │
+│  ┌───────────┐  │  1. Send request with            │  ┌───────────┐  │
+│  │           │  │     client timestamp             │  │           │  │
+│  │ Request   │──┼─────────────────────────────────▶│  │ WebSocket │  │
 │  │ Generator │  │                                  │  │ Handler   │  │
 │  │           │  │                                  │  │           │  │
-│  └───────────┘  │                                  │  └─────┬─────┘  │
-│                 │                                  │        │        │
-│                 │                                  │        │        │
-│                 │                                  │        ▼        │
-│                 │                                  │  ┌───────────┐  │
-│                 │                                  │  │ Record    │  │
-│                 │                                  │  │ Receive   │  │
-│                 │                                  │  │ Timestamp │  │
-│                 │                                  │  └─────┬─────┘  │
-│                 │                                  │        │        │
-│                 │                                  │        │        │
-│                 │                                  │        ▼        │
-│                 │                                  │  ┌───────────┐  │
-│                 │                                  │  │ Calculate │  │
-│                 │                                  │  │ Latency   │  │
-│                 │                                  │  └─────┬─────┘  │
-│                 │                                  │        │        │
-│                 │                                  │        │        │
-│                 │                                  │        ▼        │
-│                 │                                  │  ┌───────────┐  │
-│                 │                                  │  │ Statistics│  │
-│                 │                                  │  │ Calculator│  │
-│                 │                                  │  └─────┬─────┘  │
-│                 │                                  │        │        │
-│                 │                                  │        │        │
-│                 │                                  │        ▼        │
-│                 │                                  │  ┌───────────┐  │
-│                 │                                  │  │ Output    │  │
-│                 │                                  │  │ Results   │  │
-│                 │                                  │  └───────────┘  │
+│  └─────┬─────┘  │                                  │  └─────┬─────┘  │
+│        │        │                                  │        │        │
+│        │        │                                  │        │        │
+│        ▼        │                                  │        ▼        │
+│  ┌───────────┐  │                                  │  ┌───────────┐  │
+│  │ WebSocket │  │  2. Receive response with        │  │ Add server│  │
+│  │ Handler   │◀─┼─────server timestamp─────────────┼──│ timestamp │  │
+│  │           │  │                                  │  │           │  │
+│  └─────┬─────┘  │                                  │  └───────────┘  │
+│        │        │                                  │                 │
+│        │        │                                  │                 │
+│        ▼        │                                  │                 │
+│  ┌───────────┐  │                                  │                 │
+│  │ Calculate │  │                                  │                 │
+│  │ RTT       │  │                                  │                 │
+│  └─────┬─────┘  │                                  │                 │
+│        │        │                                  │                 │
+│        │        │                                  │                 │
+│        ▼        │                                  │                 │
+│  ┌───────────┐  │                                  │                 │
+│  │ Statistics│  │                                  │                 │
+│  │ Calculator│  │                                  │                 │
+│  └─────┬─────┘  │                                  │                 │
+│        │        │                                  │                 │
+│        │        │                                  │                 │
+│        ▼        │                                  │                 │
+│  ┌───────────┐  │                                  │                 │
+│  │ Output    │  │                                  │                 │
+│  │ Results   │  │                                  │                 │
+│  └───────────┘  │                                  │                 │
 │                 │                                  │                 │
 └─────────────────┘                                  └─────────────────┘
 ```
 
-### Latency Calculation Process
+### RTT Calculation Process
 
-1. **Server Side**:
-   - The server generates events at a configurable rate
-   - Each event includes a high-precision timestamp (`serverSendTimestampNs`) using wall clock time
-   - The timestamp is generated using `Instant.now().toEpochMilli() * 1_000_000 + (System.nanoTime() % 1_000_000)` for nanosecond precision
-   - Events are sent to all connected clients via WebSocket
+1. **Client Side (Request)**:
+   - The client sends requests at a configurable rate
+   - Each request includes a client timestamp (`clientSendTimestampUs`) using microsecond precision
+   - The timestamp is generated using a hybrid approach combining wall clock time with `System.nanoTime()`
+   - Requests are sent to the server via WebSocket
 
-2. **Client Side**:
-   - When a client receives an event, it immediately records its own timestamp (`clientReceiveTimestampNs`)
-   - The client timestamp also uses wall clock time with the same method as the server
-   - One-way latency is calculated as: `latency = clientReceiveTimestampNs - serverSendTimestampNs`
+2. **Server Side**:
+   - When the server receives a request, it adds its own timestamp (`serverTimestampUs`)
+   - The server immediately sends the message back to the client without modification
+   - No processing is done on the server side to minimize latency
+
+3. **Client Side (Response)**:
+   - When the client receives a response, it immediately records its own timestamp (`clientReceiveTimestampUs`)
+   - RTT is calculated as: `rtt = clientReceiveTimestampUs - clientSendTimestampUs`
    - The first N messages (configurable via `--prewarm-count`) are skipped to allow system stabilization
-   - Latency statistics are calculated and displayed directly on the console
-
-3. **Clock Synchronization**:
-   - The application uses wall clock time (epoch time) on both server and client for consistent timestamps
+   - RTT statistics are calculated and displayed directly on the console
 
 4. **Implementation Details**:
-   - Timestamps are managed by the `TimeUtils` class which provides nanosecond precision
-   - The `TestMetadata` class handles the latency calculation logic
-   - The `StatisticsCalculator` processes latency samples to generate percentiles and other metrics
-   - All timing operations prioritize consistency between server and client over absolute precision
+   - Timestamps are managed by the `TimeUtils` class which provides microsecond precision
+   - The `RttMessage` class handles the RTT calculation logic
+   - The `StatisticsCalculator` processes RTT samples to generate percentiles and other metrics
+   - No clock synchronization is required since RTT is measured using only the client's clock
 
 ## Requirements
 
@@ -100,77 +101,33 @@ docker build -t ws-latency-app .
 
 ## Running the Application
 
-The application supports two different modes:
-
-1. **Push Mode**: Server-push model where the server initiates messages to clients
-2. **RTT Mode**: Request-response model where clients send requests and server responds
-
-### Running in Push Mode (One-way Latency Measurement)
-
-#### Server Side (Push Mode)
+### Server Side
 
 ```bash
-# Start the server in push mode
-java -jar target/ws-latency-app-1.0.0.jar -mode=server -port=10443 -rate=10
+# Start the server
+java -jar target/ws-latency-app-1.0.0.jar -m=server -p=10443 --payload-size=100
 ```
 
 Options:
-- `-mode=server`: Run in server mode
-- `-port`: Port for server to listen on (default: 10443)
-- `-rate`: Events per second for server to send (default: 10)
-
-Using Docker:
-```bash
-# Start the server in push mode
-docker run -p 10443:10443 ws-latency-app -mode=server -port=10443 -rate=10
-```
-
-#### Client Side (Push Mode)
-
-```bash
-# Run the client in push mode
-java -jar target/ws-latency-app-1.0.0.jar -mode=client -server=ws://localhost:10443/ws -duration=30 -prewarm-count=100
-```
-
-Options:
-- `-mode=client`: Run in client mode
-- `-server`: WebSocket server address (default: ws://localhost:10443/ws)
-- `-duration`: Test duration in seconds (default: 30)
-- `-prewarm-count`: Skip calculating latency for first N events (default: 100)
-- `-insecure`: Skip TLS certificate verification (not recommended for production)
-- `-continuous`: Run in continuous monitoring mode
-
-### Running in RTT Mode (Round-Trip Time Measurement)
-
-#### Server Side (RTT Mode)
-
-```bash
-# Start the server in RTT mode
-java -jar target/ws-latency-app-1.0.0.jar -a=rtt -m=server -p=10443 --payload-size=100
-```
-
-Options:
-- `-a=rtt`: Use RTT application
-- `-m=server`: Run in server mode
+- `-m`, `--mode`: Run in server mode
 - `-p`, `--port`: Port for server to listen on (default: 10443)
 - `--payload-size`: Size of the message payload in bytes (default: 100)
 
 Using Docker:
 ```bash
-# Start the server in RTT mode
-docker run -p 10443:10443 ws-latency-app -a=rtt -m=server -p=10443 --payload-size=100
+# Start the server
+docker run -p 10443:10443 ws-latency-app -m=server -p=10443 --payload-size=100
 ```
 
-#### Client Side (RTT Mode)
+### Client Side
 
 ```bash
-# Run the client in RTT mode
-java -jar target/ws-latency-app-1.0.0.jar -a=rtt -m=client -s=ws://localhost:10443/ws -d=30 --rate=10 --payload-size=100 --prewarm-count=100
+# Run the client
+java -jar target/ws-latency-app-1.0.0.jar -m=client -s=ws://localhost:10443/ws -d=30 -r=10 --payload-size=100 --prewarm-count=100
 ```
 
 Options:
-- `-a=rtt`: Use RTT application
-- `-m=client`: Run in client mode
+- `-m`, `--mode`: Run in client mode
 - `-s`, `--server`: WebSocket server address (default: ws://localhost:10443/ws)
 - `-d`, `--duration`: Test duration in seconds (default: 30)
 - `-r`, `--rate`: Requests per second for client to send (default: 10)
@@ -179,22 +136,22 @@ Options:
 - `--insecure`: Skip TLS certificate verification (not recommended for production)
 - `--continuous`: Run in continuous monitoring mode
 
-## Latency Statistics Output
+## RTT Statistics Output
 
-The client outputs detailed latency statistics directly to the console:
+The client outputs detailed round-trip time statistics directly to the console:
 
 ```
-========== LATENCY TEST RESULTS ==========
-Latency Statistics (nanoseconds):
+========== RTT LATENCY TEST RESULTS ==========
+Latency Statistics (microseconds):
   Samples: 1000
-  Min: 235000 ns
-  P10: 312000 ns
-  P50: 389000 ns (median)
-  P90: 512000 ns
-  P99: 789000 ns
-  Max: 1245000 ns
-  Mean: 402350.00 ns
-==========================================
+  Min: 470 µs
+  P10: 624 µs
+  P50: 778 µs (median)
+  P90: 1024 µs
+  P99: 1578 µs
+  Max: 2490 µs
+  Mean: 804.70 µs
+=============================================
 ```
 
 ## Health Check
@@ -242,18 +199,18 @@ For best results:
 4. Disable CPU frequency scaling
 5. Consider using a real-time kernel
 
-## Clock Synchronization
+## No Clock Synchronization Required
 
-One-way latency measurement requires synchronized clocks between server and client. This application addresses clock synchronization challenges through:
+One of the key advantages of the RTT measurement approach is that it doesn't require synchronized clocks between server and client:
 
-1. **Consistent Time Source:**
-   - Both server and client use the same time source method (`Instant.now().toEpochMilli() * 1_000_000 + (System.nanoTime() % 1_000_000)`)
-   - Wall clock time (epoch time) is used with nanosecond precision from `System.nanoTime()`
+1. **Single Clock Source:**
+   - All timing is done using only the client's clock
+   - The client measures the time from when it sends a request until it receives a response
+   - This eliminates issues with clock skew and drift between different machines
 
-2. **Recommended Best Practices:**
-   - Ensure both server and client use NTP for clock synchronization
-   - For production environments, consider implementing additional clock synchronization protocols
-   - In distributed environments, monitor and account for clock drift over time
+2. **Microsecond Precision:**
+   - Timestamps use microsecond precision for optimal balance of accuracy and performance
+   - The timestamp is generated using a hybrid approach combining wall clock time with `System.nanoTime()`
 
 ## Implementation Details
 
@@ -266,152 +223,32 @@ The application uses Netty, a high-performance asynchronous event-driven network
 - **Native transports**: Uses epoll on Linux when available for improved performance
 - **Channel pipeline**: Flexible processing of WebSocket frames
 
-### Latency Calculation
+### Performance Optimizations
 
-Latency is calculated with nanosecond precision:
+The application includes several optimizations for maximum performance:
 
-1. Server adds timestamp to each message in `TestMetadata` using `TimeUtils.getCurrentTimeNanos()`
-2. Client records receive timestamp using the same method and calculates difference
-3. The `TestMetadata.calculateLatencyNs()` method computes the latency as `clientReceiveTimestampNs - serverSendTimestampNs`
-4. Statistics are calculated including min/max, percentiles, and mean
-5. Results are displayed directly on the console
+1. **TCP_NODELAY**: Disables Nagle's algorithm to reduce latency
+2. **Optimized Buffer Sizes**: Configures send/receive buffer sizes for optimal performance
+3. **Write Buffer Water Marks**: Sets appropriate high/low water marks for write buffers
+4. **Native Transport**: Uses epoll on Linux when available for improved performance
+5. **Connection Timeouts**: Sets appropriate connection timeouts to avoid hanging connections
 
-### Recent Improvements
+### RTT Calculation
 
-The application includes several recent improvements to enhance accuracy and reliability:
+RTT is calculated with microsecond precision:
 
-1. **Consistent Timestamp Generation:**
-   - Both server and client use wall clock time with nanosecond precision (`Instant.now().toEpochMilli() * 1_000_000 + (System.nanoTime() % 1_000_000)`)
-   - This ensures timestamps are comparable across different machines while providing nanosecond precision
+1. Client adds timestamp to outgoing message using `TimeUtils.getCurrentTimeMicros()`
+2. Server receives message, adds its own timestamp, and sends it back
+3. Client receives response and records receive timestamp
+4. The `RttMessage.calculateRttUs()` method computes RTT as `clientReceiveTimestampUs - clientSendTimestampUs`
+5. Statistics are calculated including min/max, percentiles, and mean
+6. Results are displayed directly on the console
 
-
-3. **WebSocket Protocol Handling:**
-   - Improved handling of secure WebSocket connections (wss://)
-   - Added proper handling of X-Forwarded-Proto header for connections through load balancers
-
-4. **Infrastructure Improvements:**
-   - Updated ALB configuration to use HTTP for backend connections while maintaining HTTPS for client connections
-   - Optimized load balancer settings for WebSocket traffic with proper stickiness configuration
-
-5. **Nanosecond Precision:**
-   - Enhanced timestamp precision from microseconds to nanoseconds
-   - Implemented hybrid approach combining wall clock time with nanosecond precision from `System.nanoTime()`
-   - Updated all relevant classes to handle nanosecond precision timestamps
-
-## RTT Measurement Application
-
-In addition to the server-push model, this project includes a separate RTT (Round-Trip Time) measurement application that implements a request-response model similar to the original Go implementation.
-
-### RTT vs One-Way Latency
-
-The main application measures one-way latency from server to client, which requires synchronized clocks. The RTT application measures round-trip time, which doesn't require clock synchronization:
-
-1. **One-Way Latency (Main Application)**:
-   - Server sends message with server timestamp
-   - Client receives message and calculates: `clientReceiveTime - serverSendTime`
-   - Requires synchronized clocks between server and client
-
-2. **Round-Trip Time (RTT Application)**:
-   - Client sends message with client timestamp
-   - Server receives message, adds server timestamp, and sends it back
-   - Client receives response and calculates: `clientReceiveTime - clientSendTime`
-   - No clock synchronization required
-
-### How RTT Measurement Works
-
-```
-┌─────────────────┐                                  ┌─────────────────┐
-│                 │                                  │                 │
-│  WebSocket      │                                  │  WebSocket      │
-│  Client         │                                  │  Server         │
-│                 │                                  │                 │
-│  ┌───────────┐  │  1. Send request with            │  ┌───────────┐  │
-│  │           │  │     client timestamp             │  │           │  │
-│  │ Request   │──┼─────────────────────────────────▶│  │ WebSocket │  │
-│  │ Generator │  │                                  │  │ Handler   │  │
-│  │           │  │                                  │  │           │  │
-│  └─────┬─────┘  │                                  │  └─────┬─────┘  │
-│        │        │                                  │        │        │
-│        │        │                                  │        │        │
-│        ▼        │                                  │        ▼        │
-│  ┌───────────┐  │                                  │  ┌───────────┐  │
-│  │ WebSocket │  │  2. Receive response with        │  │ Add server│  │
-│  │ Handler   │◀─┼─────server timestamp─────────────┼──│ timestamp │  │
-│  │           │  │                                  │  │           │  │
-│  └─────┬─────┘  │                                  │  └───────────┘  │
-│        │        │                                  │                 │
-│        │        │                                  │                 │
-│        ▼        │                                  │                 │
-│  ┌───────────┐  │                                  │                 │
-│  │ Calculate │  │                                  │                 │
-│  │ RTT       │  │                                  │                 │
-│  └─────┬─────┘  │                                  │                 │
-│        │        │                                  │                 │
-│        │        │                                  │                 │
-│        ▼        │                                  │                 │
-│  ┌───────────┐  │                                  │                 │
-│  │ Statistics│  │                                  │                 │
-│  │ Calculator│  │                                  │                 │
-│  └─────┬─────┘  │                                  │                 │
-│        │        │                                  │                 │
-│        │        │                                  │                 │
-│        ▼        │                                  │                 │
-│  ┌───────────┐  │                                  │                 │
-│  │ Output    │  │                                  │                 │
-│  │ Results   │  │                                  │                 │
-│  └───────────┘  │                                  │                 │
-│                 │                                  │                 │
-└─────────────────┘                                  └─────────────────┘
-```
-
-### Running the RTT Server
-
-```bash
-# Start the RTT server
-java -jar target/ws-latency-app-1.0.0.jar -a=rtt -m=server -p=10443 --payload-size=100
-```
-
-Options:
-- `-p`, `--port`: Port for server to listen on (default: 10443)
-- `--payload-size`: Size of the message payload in bytes (default: 100)
-
-### Running the RTT Client
-
-```bash
-# Run the RTT client
-java -jar target/ws-latency-app-1.0.0.jar -a=rtt -m=client -s=ws://localhost:10443/ws -d=30 --rate=10 --payload-size=100 --prewarm-count=100
-```
-
-Options:
-- `-s`, `--server`: WebSocket server address (default: ws://localhost:10443/ws)
-- `-d`, `--duration`: Test duration in seconds (default: 30)
-- `-r`, `--rate`: Requests per second for client to send (default: 10)
-- `--payload-size`: Size of the message payload in bytes (default: 100)
-- `--prewarm-count`: Skip calculating latency for first N events (default: 100)
-- `--insecure`: Skip TLS certificate verification (not recommended for production)
-- `--continuous`: Run in continuous monitoring mode
-
-### RTT Statistics Output
-
-The RTT client outputs detailed round-trip time statistics directly to the console:
-
-```
-========== RTT LATENCY TEST RESULTS ==========
-Latency Statistics (nanoseconds):
-  Samples: 1000
-  Min: 470000 ns
-  P10: 624000 ns
-  P50: 778000 ns (median)
-  P90: 1024000 ns
-  P99: 1578000 ns
-  Max: 2490000 ns
-  Mean: 804700.00 ns
-=============================================
-```
-
-### Benefits of RTT Measurement
+## Benefits of RTT Measurement
 
 1. **No Clock Synchronization Required**: RTT measurement doesn't depend on synchronized clocks between server and client
 2. **Accurate Measurement**: Eliminates issues with clock skew and drift
 3. **Configurable Payload Size**: Allows testing with different message sizes
 4. **Consistent Results**: Provides reliable measurements across different environments
+5. **Microsecond Precision**: Provides sufficient precision for network latency measurement
+6. **Performance Optimized**: Includes multiple optimizations for minimal overhead

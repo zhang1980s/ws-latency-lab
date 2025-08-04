@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * WebSocket RTT client for latency testing using Netty.
  * This client implements a request-response model for RTT measurement.
+ * Optimized for microsecond precision and low latency.
  */
 public class WebSocketRttClient {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketRttClient.class);
@@ -135,12 +136,15 @@ public class WebSocketRttClient {
                 rttStatistics
         );
 
-        // Configure bootstrap
+        // Configure bootstrap with performance optimizations
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(group)
                 .channel(useEpoll ? EpollSocketChannel.class : NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
+                .option(ChannelOption.TCP_NODELAY, true) // Disable Nagle's algorithm
                 .option(ChannelOption.SO_KEEPALIVE, true)
+                .option(ChannelOption.SO_SNDBUF, 64 * 1024) // Optimize send buffer size
+                .option(ChannelOption.SO_RCVBUF, 64 * 1024) // Optimize receive buffer size
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // Set connection timeout
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
@@ -298,7 +302,7 @@ public class WebSocketRttClient {
                 // Create RTT message
                 RttMessage message = new RttMessage(sequence.incrementAndGet());
                 message.setMessageId(UUID.randomUUID().toString());
-                message.setClientSendTimestampNs(TimeUtils.getCurrentTimeNanos());
+                message.setClientSendTimestampUs(TimeUtils.getCurrentTimeMicros());
                 message.setPayload(generateRandomPayload(config.getPayloadSize()));
                 
                 // Convert to JSON

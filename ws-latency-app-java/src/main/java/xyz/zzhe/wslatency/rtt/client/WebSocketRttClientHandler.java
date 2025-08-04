@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * WebSocket RTT client handler for latency testing.
+ * Optimized for microsecond precision and low latency.
  */
 public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Object> {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketRttClientHandler.class);
@@ -112,8 +113,8 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
      */
     private void handleTextFrame(TextWebSocketFrame frame) {
         try {
-            // Record receive time
-            long receiveTime = TimeUtils.getCurrentTimeNanos();
+            // Record receive time with microsecond precision
+            long receiveTime = TimeUtils.getCurrentTimeMicros();
             
             // Parse message
             String message = frame.text();
@@ -124,10 +125,10 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
             }
             
             // Update receive timestamp
-            rttMessage.setClientReceiveTimestampNs(receiveTime);
+            rttMessage.setClientReceiveTimestampUs(receiveTime);
             
             // Calculate RTT
-            long rtt = rttMessage.calculateRttNs();
+            long rtt = rttMessage.calculateRttUs();
             
             // Add to statistics
             boolean rttAdded = rttStatistics.addSample(rtt);
@@ -135,7 +136,7 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
             // Log periodically
             long count = messagesReceived.incrementAndGet();
             if (count % 100 == 0) {
-                logger.debug("Received {} messages, last RTT: {} ns",
+                logger.debug("Received {} messages, last RTT: {} µs",
                         count, rtt);
             }
             
@@ -177,7 +178,11 @@ public class WebSocketRttClientHandler extends SimpleChannelInboundHandler<Objec
             channel.config().setOption(ChannelOption.SO_SNDBUF, 64 * 1024);
             channel.config().setOption(ChannelOption.SO_RCVBUF, 64 * 1024);
             
-            logger.debug("Configured channel for low latency: TCP_NODELAY=true");
+            // Additional performance optimizations
+            channel.config().setOption(ChannelOption.WRITE_BUFFER_WATER_MARK,
+                new WriteBufferWaterMark(8 * 1024, 32 * 1024));
+            
+            logger.debug("Configured channel for low latency: TCP_NODELAY=true, optimized buffer sizes");
         } catch (Exception e) {
             logger.warn("Error configuring channel for low latency", e);
         }
